@@ -5,7 +5,9 @@ import spiderdrawer.ui.MainForm;
 public class Main {
 
 	public static void main(String[] args) {
-		MainForm.main(args);
+            System.setProperty("apple.laf.useScreenMenuBar", "true");
+            System.setProperty("com.apple.mrj.application.apple.menu.about.name", "Spider Drawer");
+            MainForm.main(args);
 	}
 	
 }
