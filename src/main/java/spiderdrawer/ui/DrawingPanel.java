@@ -1,6 +1,7 @@
 package spiderdrawer.ui;
 
 import java.awt.BasicStroke;
+import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Point;
@@ -67,6 +68,7 @@ public class DrawingPanel extends JPanel {
 
     private void initComponents() {
         //setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
+    	setBackground(Color.WHITE);
     }
     
     public BufferedImage createImage() {

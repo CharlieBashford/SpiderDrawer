@@ -64,12 +64,12 @@ public class MainForm extends JFrame {
     }
 
     private void initComponents() {
-
         setSize(900, 650);
+        setLocationRelativeTo(null);
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
         addMenu();
-        addDrawingFrame();
+        addDrawingFrame();        
     }
     
     private void addDrawingFrame() {
