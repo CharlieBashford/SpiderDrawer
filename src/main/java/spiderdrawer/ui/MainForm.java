@@ -31,7 +31,7 @@ public class MainForm extends JFrame {
     }
     
     private void clearMenuItemClicked() {
-    	drawingPanel.getPointsList().clear();
+    	drawingPanel.clearDrawable();
     	drawingPanel.repaint();
     }
     
@@ -62,7 +62,7 @@ public class MainForm extends JFrame {
     		//log.append("Saving command cancelled by user.");
     	}	
     }
-
+    
     private void initComponents() {
         setSize(900, 650);
         setLocationRelativeTo(null);
@@ -79,12 +79,13 @@ public class MainForm extends JFrame {
     
     private void addMenu() {
     	JMenuBar menuBar = new JMenuBar();
+    	setJMenuBar(menuBar);
+    	
         JMenu optionsMenu = new JMenu();
+        optionsMenu.setText("Options");        
+        menuBar.add(optionsMenu);
+        
         JMenuItem exportMenuItem = new JMenuItem();
-        JMenuItem clearMenuItem = new JMenuItem();
-
-        optionsMenu.setText("Options");
-
         exportMenuItem.setText("Export");
         exportMenuItem.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e) {
@@ -92,7 +93,8 @@ public class MainForm extends JFrame {
 			}
         });
         optionsMenu.add(exportMenuItem);
-
+        
+        JMenuItem clearMenuItem = new JMenuItem();
         clearMenuItem.setText("Clear");
         clearMenuItem.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e) {
@@ -101,8 +103,39 @@ public class MainForm extends JFrame {
         });
         optionsMenu.add(clearMenuItem);
 
-        menuBar.add(optionsMenu);
-        setJMenuBar(menuBar);
+        
+        
+        /*Test menu starts */
+        JMenu testMenu = new JMenu();
+        testMenu.setText("Test");
+        menuBar.add(testMenu);
+        
+        JMenuItem circleMenuItem = new JMenuItem();
+        circleMenuItem.setText("Circle");
+        circleMenuItem.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent e) {
+				drawingPanel.addCircle();				
+			}
+        });
+        testMenu.add(circleMenuItem);
+        
+        JMenuItem lineMenuItem = new JMenuItem();
+        lineMenuItem.setText("Line");
+        lineMenuItem.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent e) {
+				drawingPanel.addLine();					
+			}
+        });
+        testMenu.add(lineMenuItem);
+        
+        JMenuItem labelMenuItem = new JMenuItem();
+        labelMenuItem.setText("Label");
+        labelMenuItem.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent e) {
+				drawingPanel.addLabel();					
+			}
+        });
+        testMenu.add(labelMenuItem);
     }
     
     /**

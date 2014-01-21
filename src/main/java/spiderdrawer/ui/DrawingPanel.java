@@ -2,16 +2,24 @@ package spiderdrawer.ui;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Point;
+import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 
 import javax.swing.JPanel;
 
+import spiderdrawer.drawable.Circle;
+import spiderdrawer.drawable.Drawable;
+import spiderdrawer.drawable.Freeform;
+import spiderdrawer.drawable.Line;
+import spiderdrawer.drawable.Label;
+
 import java.util.ArrayList;
+import java.util.Random;
 
 /**
  *
@@ -19,8 +27,8 @@ import java.util.ArrayList;
  */
 public class DrawingPanel extends JPanel {
     
-    private ArrayList<ArrayList<Point>> pointsList = new ArrayList<ArrayList<Point>>();
-    
+    private ArrayList<Drawable> drawableList = new ArrayList<Drawable>();
+    private Freeform currentFreeform;
     /**
      * Creates new form DrawFrame
      */
@@ -28,26 +36,51 @@ public class DrawingPanel extends JPanel {
         initComponents();
         addMouseListener(new MouseAdapter() {
             public void mousePressed(MouseEvent e) {
-            	pointsList.add(new ArrayList<Point>());
-                draw(e.getX(), e.getY());
-
+            	currentFreeform = new Freeform(e.getX(), e.getY());
+            	drawableList.add(currentFreeform);
+            	repaint();
             }
         });
         
         addMouseMotionListener(new MouseAdapter() {
             public void mouseDragged(MouseEvent e) {
-                draw(e.getX(), e.getY());
+                currentFreeform.addPoint(e.getX(), e.getY());
+                repaint();
             }
         });
     }
     
-    public ArrayList<ArrayList<Point>> getPointsList() {
-    	return pointsList;
+    public void addCircle() {
+    	Random generator = new Random();
+    	int x = generator.nextInt(getWidth());
+    	int y = generator.nextInt(getHeight());
+    	int radius = 50 + generator.nextInt(51);
+    	drawableList.add(new Circle(x, y, radius));
+    	repaint();
     }
     
-    private void draw(int x, int y) {
-        pointsList.get(pointsList.size()-1).add(new Point(x,y));
-        repaint();
+    public void addLine() {
+    	Random generator = new Random();
+    	int startX = generator.nextInt(getWidth());
+    	int startY = generator.nextInt(getHeight());
+    	int endX = generator.nextInt(getWidth());
+    	int endY = generator.nextInt(getHeight());
+    	drawableList.add(new Line(startX, startY, endX, endY));
+    	repaint();
+    }
+    
+    public void addLabel() {
+    	Random generator = new Random();
+    	int x = generator.nextInt(getWidth());
+    	int y = generator.nextInt(getHeight());
+    	int letterNumber = generator.nextInt(26);
+    	char letter = (char) ('A' + letterNumber);
+    	drawableList.add(new Label(letter, x, y));
+    	repaint();
+    }
+    
+    public void clearDrawable() {
+    	drawableList.clear();
     }
     
     @Override
@@ -55,14 +88,10 @@ public class DrawingPanel extends JPanel {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
         g2.setStroke(new BasicStroke(2));
-        
-        for (int i = 0; i < pointsList.size(); i++) {
-            for (int j = 0; j < pointsList.get(i).size() - 2; j++) {
-                Point p1 = pointsList.get(i).get(j);
-                Point p2 = pointsList.get(i).get(j+1);
-
-                g2.drawLine(p1.x, p1.y, p2.x, p2.y);
-            }
+        g2.setFont(new Font(g2.getFont().getFontName(),Font.PLAIN,20));
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        for (int i = 0; i < drawableList.size(); i++) {
+            drawableList.get(i).draw(g2);
         }
     }
 
