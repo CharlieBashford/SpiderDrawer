@@ -3,6 +3,7 @@ package spiderdrawer.shape;
 import java.awt.Graphics2D;
 import java.util.ArrayList;
 
+import spiderdrawer.shape.containers.MultiContainer;
 import spiderdrawer.shape.interfaces.Deletable;
 import spiderdrawer.shape.interfaces.Drawable;
 import spiderdrawer.shape.interfaces.Shape;
@@ -13,14 +14,19 @@ public class Shading implements Deletable {
 	/*
 	 *  included\excluded
 	 */
-	ArrayList<Circle> included;
+	MultiContainer<Circle, Shading> included;
 	ArrayList<Circle> excluded;
 	
 	public Shading() {
 	}
 	
+	private void createContainers() {
+		included = new MultiContainer<Circle, Shading>(this);
+	}
+	
 	public static Shading create(Freeform freeform, Shape[] shapes) {
 		Shading shading = new Shading();
+		shading.createContainers();
 		shading.compute(freeform, shapes);
 		return shading;
 	}
@@ -42,32 +48,10 @@ public class Shading implements Deletable {
 		return circleList.toArray(new Circle[0]);
  	}
 	
-	protected void addIncluded(Circle circle) {
-		if (this.included == null)
-			this.included = new ArrayList<Circle>();
-		included.add(circle);
-		if (circle != null && !circle.containsShading(this)) {
-			circle.addShading(this);
-		}
-	}
-	
-	protected boolean containsIncluded(Circle circle) {
-		if (circle != null)
-			return included.contains(circle);
-		return false;
-	}
-	
-	protected void removeIncluded(Circle circle) {
-		included.remove(circle);
-		if (circle != null && circle.containsShading(this)) {
-			circle.removeShading(this);
-		}
-	}
-	
 	private void computeIncluded(Freeform freeform, Circle[] circles) {
 		for (int i = 0; i < circles.length; i++) {
 			if (circles[i].contains(freeform))
-				addIncluded(circles[i]);
+				included.add(circles[i], circles[i].shadings);
 		}
  	}
 	
@@ -113,7 +97,6 @@ public class Shading implements Deletable {
 	
 	@Override
 	public void remove() {
-		for (int i = 0; i < included.size(); i++)
-			removeIncluded(included.get(i));
+		included.removeAll();
 	}
 }

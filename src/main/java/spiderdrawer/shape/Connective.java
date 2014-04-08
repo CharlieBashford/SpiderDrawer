@@ -10,6 +10,7 @@ import java.util.ArrayList;
 
 import javax.swing.UIManager;
 
+import spiderdrawer.shape.containers.SingleContainer;
 import spiderdrawer.shape.interfaces.Deletable;
 import spiderdrawer.shape.interfaces.Drawable;
 import spiderdrawer.shape.interfaces.Movable;
@@ -22,9 +23,9 @@ public class Connective implements Drawable, Movable, Deletable {
 	int width;
 	int height;
 	private ArrayList<Shape> shapeList;
-	Box leftBox;
-	Box rightBox;
-	Box outerBox;
+	SingleContainer<Box, Connective> leftBox;
+	SingleContainer<Box, Connective> rightBox;
+	SingleContainer<Box, Connective> outerBox;
 	
 	public Connective(Logical logical, Point center) {
 		this.logical = logical;
@@ -32,8 +33,15 @@ public class Connective implements Drawable, Movable, Deletable {
 		setHeightAndWidth();
 	}
 	
+	private void createContainers() {
+		leftBox = new SingleContainer<Box, Connective>(this);
+		rightBox = new SingleContainer<Box, Connective>(this);
+		outerBox = new SingleContainer<Box, Connective>(this);
+	}
+	
 	public static Connective create(Logical logical, int x, int y, ArrayList<Shape> shapeList) {
 		Connective connective = new Connective(logical, new Point(x,y));
+		connective.createContainers();
 		connective.shapeList = shapeList;
 		connective.recompute(false);
 		return connective;
@@ -58,58 +66,11 @@ public class Connective implements Drawable, Movable, Deletable {
 		height = c.getFontMetrics(font).getAscent()/2;
 	}
 	
-	protected void setLeftBox(Box box) {
-		System.out.println("setting left box " + box);
-		Box oldBox = leftBox;
-		leftBox = box;
-		if (oldBox != null) {
-			oldBox.setConnective(null, false);
-		}
-		if (leftBox != null && !this.equals(leftBox.getConnective())) {
-			leftBox.setConnective(this, false);
-		}
-	}
-	
-	protected void setRightBox(Box box) {
-		System.out.println("setting right box " + box);
-		Box oldBox = rightBox;
-		rightBox = box;
-		if (oldBox != null) {
-			oldBox.setConnective(null, true);
-		}
-		if (rightBox != null && !this.equals(rightBox.getConnective())) {
-			rightBox.setConnective(this, true);
-		}
-	}
-	
-	protected void setOuterBox(Box box) {
-		Box oldBox = outerBox;
-		outerBox = box;
-		if (oldBox != null) {
-			oldBox.removeInnerConnective(this);
-		}
-		if (outerBox != null && !outerBox.containsInnerConnective(this)) {
-			outerBox.addInnerConnective(this);
-		}
-	}
-	
-	protected Box getLeftBox() {
-		return leftBox;
-	}
-	
-	protected Box getRightBox() {
-		return rightBox;
-	}
-	
-	protected Box getOuterBox() {
-		return outerBox;
-	}
-	
 	protected boolean isFullyConnected() {
 		if (logical == Logical.NEGATION) {
 			return (rightBox != null);
 		}
-		return (leftBox != null) && (rightBox != null);
+		return (leftBox.get() != null) && (rightBox.get() != null);
 	}
 
 	@Override
@@ -136,9 +97,9 @@ public class Connective implements Drawable, Movable, Deletable {
 	public void move(Point from, Point to, boolean external) {
 		if (external) {
 			center.move(from, to);
-			if (leftBox != null)
-				leftBox.move(from, to, true);
-			rightBox.move(from, to, true);
+			if (leftBox.get() != null)
+				leftBox.get().move(from, to, true);
+			rightBox.get().move(from, to, true);
 		} else {
 			move(from, to);
 		}
@@ -147,23 +108,14 @@ public class Connective implements Drawable, Movable, Deletable {
 	@Override
 	public void move(Point from, Point to) {
 		center.move(from, to);
-		if (leftBox != null && this.leftDistance(leftBox) > CONNECTIVE_BOX_DIST) {
-			setLeftBox(null);
+		if (leftBox.get() != null && this.leftDistance(leftBox.get()) > CONNECTIVE_BOX_DIST) {
+			leftBox.set(null, null);
 		}
-		if (rightBox != null && this.rightDistance(rightBox) > CONNECTIVE_BOX_DIST) {
-			setRightBox(null);
+		if (rightBox.get() != null && this.rightDistance(rightBox.get()) > CONNECTIVE_BOX_DIST) {
+			rightBox.set(null, null);
 		}
 	}
 
-	private Box[] boxArray(Shape[] shapes) {
-		ArrayList<Box> boxList = new ArrayList<Box>();
-		for (int i = 0; i < shapes.length; i++) {
-			if (shapes[i] instanceof Box) {
-				boxList.add((Box) shapes[i]);
-			}
-		}
-		return boxList.toArray(new Box[0]);
- 	}
 	
 	public void computeBoxes(Box[] boxes) {
 		int leftBoxPos = -1;
@@ -171,7 +123,7 @@ public class Connective implements Drawable, Movable, Deletable {
 		double lowestLeftDist = Double.MAX_VALUE;
 		double lowestRightDist = Double.MAX_VALUE;
 		for (int i = 0; i < boxes.length; i++) {
-			if (boxes[i].connective != null)
+			if (boxes[i].connective.get() != null)
 				continue;
 			double leftDist = this.leftDistance(boxes[i]);
 			double rightDist = this.rightDistance(boxes[i]);
@@ -188,26 +140,28 @@ public class Connective implements Drawable, Movable, Deletable {
 		if (this.logical == Logical.NEGATION) //If negation, then can only have right box.
 			leftBoxPos = -1;
 		
-		if (leftBox == null) {
+		if (leftBox.get() == null) {
 			if (lowestLeftDist <= CONNECTIVE_BOX_DIST && leftBoxPos != -1) {
 				System.out.println("close to leftBox");
-				this.setLeftBox(boxes[leftBoxPos]);
+				leftBox.set(boxes[leftBoxPos], boxes[leftBoxPos].connective);
+				boxes[leftBoxPos].leftConnective = false;
 			}
 		}
-		if (rightBox == null) {
+		if (rightBox.get() == null) {
 			if (lowestRightDist <= CONNECTIVE_BOX_DIST && rightBoxPos != -1) {
 				System.out.println("close to rightBox");
-				this.setRightBox(boxes[rightBoxPos]);
+				rightBox.set(boxes[rightBoxPos], boxes[rightBoxPos].connective);
+				boxes[rightBoxPos].leftConnective = true;
 			}
 		}
 	}
 	
 	public void computeOuterBoxes(Box[] boxes) {
-		if (outerBox != null)
-			this.setOuterBox(null);
+		if (outerBox.get() != null)
+			outerBox.set(null, null);
 		for (int i = 0; i < boxes.length; i++) {
 			if (boxes[i].contains(this) && !boxes[i].innerBoxesContains(this)) {
-				this.setOuterBox(boxes[i]);
+				outerBox.set(boxes[i], boxes[i].innerConnectives);
 				break;
 			}
 		}
@@ -217,9 +171,8 @@ public class Connective implements Drawable, Movable, Deletable {
 	public void recompute(boolean moving) {
 		if (shapeList == null)
 			return;
-		Shape[] shapes = shapeList.toArray(new Shape[0]);
-		computeBoxes(boxArray(shapes));
-		computeOuterBoxes(boxArray(shapes));
+		computeBoxes(Arrays.boxArray(shapeList));
+		computeOuterBoxes(Arrays.boxArray(shapeList));
 	}
 	
 	public double boundaryDistance(Point p) {
@@ -252,8 +205,12 @@ public class Connective implements Drawable, Movable, Deletable {
 
 	@Override
 	public void remove() {
-		// TODO Auto-generated method stub
-		
+		if (leftBox.get() != null)
+			leftBox.set(null, null);
+		if (rightBox.get() != null)	
+			rightBox.set(null, null);
+		if (outerBox != null)
+			outerBox.set(null, null);
 	}
 	
 	

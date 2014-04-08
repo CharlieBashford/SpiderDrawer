@@ -96,7 +96,7 @@ public class DrawingPanel extends JPanel {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
-        drawingBox = new Box(0, 0, getWidth(), getHeight());
+        drawingBox = Box.create(0, 0, getWidth(), getHeight(), shapeList);
         shapeList.add(drawingBox);
         recognition = true;
         shadingRecognition = false;
@@ -120,6 +120,9 @@ public class DrawingPanel extends JPanel {
 	        	for (int i = 0; i < shapeList.size(); i++) {
 	        		if (shapeList.get(i) instanceof Movable) {
 	        			Movable movable = (Movable) shapeList.get(i);
+	        			if (movable.equals(drawingBox)) {
+	        				continue;
+	        			}
 	        			double dist = movable.boundaryDistance(from);
 	        			if (movable.isWithin(from) && dist < minDist) {
 	        				toMove = movable;
@@ -142,6 +145,9 @@ public class DrawingPanel extends JPanel {
             		for (int i = 0; i < shapeList.size(); i++) {
             			if (shapeList.get(i) instanceof Deletable) {
             				Deletable delShape = (Deletable) shapeList.get(i);
+            				if (delShape.equals(drawingBox)) {
+    	        				continue;
+    	        			}
 	            			if (delShape.intersects(line)) {
 	            				shapeList.remove(i);
 	            				delShape.remove();
@@ -242,6 +248,9 @@ public class DrawingPanel extends JPanel {
             		for (int i = 0; i < shapeList.size(); i++) {
             			if (shapeList.get(i) instanceof Deletable) {
             				Deletable delShape = (Deletable) shapeList.get(i);
+            				if (delShape.equals(drawingBox)) {
+    	        				continue;
+    	        			}
 	            			if (delShape.intersects(line)) {
 	            				shapeList.remove(i);
 	            				delShape.remove();
@@ -677,6 +686,10 @@ public class DrawingPanel extends JPanel {
         for (int i = 0; i < shapeList.size(); i++) {
         	if (shapeList.get(i) instanceof Drawable && !(shapeList.get(i) instanceof Circle)) {
         		Drawable drawable = (Drawable) shapeList.get(i);
+        		if (drawable.equals(drawingBox)) {
+        			if (drawingBox.isValid())
+        			continue;
+        		}
         		drawable.draw(g2);
         	}
         }

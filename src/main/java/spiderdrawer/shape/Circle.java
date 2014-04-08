@@ -7,6 +7,8 @@ import java.awt.geom.Area;
 import java.awt.geom.Ellipse2D;
 import java.util.ArrayList;
 
+import spiderdrawer.shape.containers.MultiContainer;
+import spiderdrawer.shape.containers.SingleContainer;
 import spiderdrawer.shape.interfaces.Deletable;
 import spiderdrawer.shape.interfaces.Drawable;
 import spiderdrawer.shape.interfaces.Movable;
@@ -18,13 +20,13 @@ public class Circle implements Drawable, Movable, Deletable {
 	Point center;
 	int radius;
 	private ArrayList<Shape> shapeList;
-	Label label;
+	SingleContainer<Label, Circle> label;
 	boolean moveLabel;
-	ArrayList<Point> points;
-	ArrayList<Shading> shadings;
-	Box box;
-	ArrayList<Box> innerBoxes;
-	ArrayList<Box> overlapBoxes;
+	MultiContainer<Point, Circle> points;
+	MultiContainer<Shading, Circle> shadings;
+	SingleContainer<Box, Circle> box;
+	MultiContainer<Box, Circle> innerBoxes;
+	MultiContainer<Box, Circle> overlapBoxes;
 	
 	public Circle(Point center, int radius) {
 		this.center = center;
@@ -35,8 +37,19 @@ public class Circle implements Drawable, Movable, Deletable {
 		this(new Point(centerX, centerY), radius);
 	}
 	
+	private void createContainers() {
+		label = new SingleContainer<Label, Circle>(this);
+		points = new MultiContainer<Point, Circle>(this);
+		shadings = new MultiContainer<Shading, Circle>(this);
+		box = new SingleContainer<Box, Circle>(this);
+		innerBoxes = new MultiContainer<Box, Circle>(this);
+		overlapBoxes = new MultiContainer<Box, Circle>(this);
+		
+	}
+	
 	public static Circle create(int centerX, int centerY, int radius, ArrayList<Shape> shapeList) {
 		Circle circle = new Circle(centerX, centerY, radius);
+		circle.createContainers();
 		circle.shapeList = shapeList;
 		circle.recompute(false);
 		return circle;
@@ -58,150 +71,9 @@ public class Circle implements Drawable, Movable, Deletable {
 	}
 	
 	protected boolean hasLabel() {
-		return label != null;
+		return label.get() != null;
 	}
 	
-	protected void setLabel(Label label) {
-		Label oldLabel = this.label;
-		this.label = label;
-		if (oldLabel != null) {
-			oldLabel.setCircle(null);
-		}
-		if (label != null && !this.equals(label.getCircle())) {
-			label.setCircle(this);
-		}
-		
-		
-	}
-	
-	protected void addPoint(Point point) {
-		if (this.points == null)
-			this.points = new ArrayList<Point>();
-		points.add(point);
-		if (point != null && !point.containsCircle(this)) {
-			point.addCircle(this);
-		}
-	}
-	
-	protected void removePoint(Point point) {
-		points.remove(point);
-		if (point != null && point.containsCircle(this)) {
-			point.removeCircle(this);
-		}
-	}
-	
-	protected boolean containsPoint(Point point) {
-		if (points != null)
-			return points.contains(point);
-		return false;
-	}
-	
-	protected void removeAllPoints() {
-		for (int i = 0; i < points.size(); i++) {
-			removePoint(points.get(0));
-		}
-	}
-	
-	protected void addInnerBox(Box box) {
-		if (this.innerBoxes == null)
-			this.innerBoxes = new ArrayList<Box>();
-		innerBoxes.add(box);
-		if (box != null && !box.containsOuterCircle(this)) {
-			box.addOuterCircle(this);
-		}
-	}
-	
-	protected void removeInnerBox(Box box) {
-		innerBoxes.remove(box);
-		if (box != null && box.containsOuterCircle(this)) {
-			box.removeOuterCircle(this);
-		}
-	}
-	
-	protected boolean containsInnerBox(Box box) {
-		if (box != null)
-			return innerBoxes.contains(box);
-		return false;
-	}
-	
-	protected boolean containsInnerBox() {
-		return (innerBoxes != null) && (innerBoxes.size() > 0);
-	}
-	
-	protected void removeAllInnerBoxes() {
-		while(innerBoxes.size() > 0) {
-			removeInnerBox(innerBoxes.get(0));
-		}
-	}
-	
-	protected void setBox(Box box) {	
-		Box oldBox = this.box;
-		this.box = box;
-		if (oldBox != null) {
-			oldBox.removeCircle(this);
-		}
-		if (box != null && !box.containsCircle(this)) {
-			box.addCircle(this);
-		}
-	}
-	
-	protected Box getBox() {
-		return box;
-	}
-	
-	protected void addOverlapBox(Box box) {
-		if (this.overlapBoxes == null)
-			this.overlapBoxes = new ArrayList<Box>();
-		overlapBoxes.add(box);
-		if (box != null && !box.containsOverlapCircle(this)) {
-			box.addOverlapCircle(this);
-		}
-	}
-	
-	protected void removeOverlapBox(Box box) {
-		overlapBoxes.remove(box);
-		if (box != null && box.containsOverlapCircle(this)) {
-			box.removeOverlapCircle(this);
-		}
-	}
-	
-	protected boolean containsOverlapBox(Box box) {
-		if (overlapBoxes != null)
-			return overlapBoxes.contains(box);
-		return false;
-	}
-	
-	protected boolean containsOverlapBox() {
-		return (overlapBoxes != null) && (overlapBoxes.size() > 0);
-	}
-	
-	protected void removeAllOverlapBoxes() {
-		for (int i = 0; i < overlapBoxes.size(); i++) {
-			removeOverlapBox(overlapBoxes.get(0));
-		}
-	}
-	
-	protected void addShading(Shading shading) {
-		if (this.shadings == null)
-			this.shadings = new ArrayList<Shading>();
-		shadings.add(shading);
-		if (shading != null && !shading.containsIncluded(this)) {
-			shading.addIncluded(this);
-		}
-	}
-	
-	protected void removeShading(Shading shading) {
-		shadings.remove(shading);
-		if (shading != null && shading.containsIncluded(this)) {
-			shading.removeIncluded(this);
-		}
-	}
-	
-	protected boolean containsShading(Shading shading) {
-		if (shadings != null)
-			return shadings.contains(shading);
-		return false;
-	}
 	
 	protected boolean contains(Freeform freeform) {
 		if (freeform.points.size() < 2)
@@ -263,10 +135,6 @@ public class Circle implements Drawable, Movable, Deletable {
 	public double signedDistance(Label label) {
 		return label.signedDistance(this);
 	}
-		
-	protected Label getLabel() {
-		return label;
-	}
 	
 	public String asString() {
 		return center.x + "," + center.y + "," + radius;
@@ -295,7 +163,7 @@ public class Circle implements Drawable, Movable, Deletable {
 				}
 			}
 		}
-		if (!hasLabel() || containsOverlapBox() || containsInnerBox()) {
+		if (!hasLabel() || !overlapBoxes.isEmpty() || !innerBoxes.isEmpty()) {
 			g2.setColor(Color.RED);
 		} else {
 			g2.setColor(Color.BLACK);
@@ -303,59 +171,38 @@ public class Circle implements Drawable, Movable, Deletable {
 		g2.drawOval((int)(center.getX()-radius), (int)(center.getY()-radius), radius*2, radius*2);
 		g2.setColor(Color.BLACK);
 	}
+	
+	public void move(Point from, Point to, boolean external) {
+		if (external) {
+			center.move(from, to);
+			if (label.get() != null) {
+				if (moveLabel) {
+					label.get().move(from, to);
+				} else if (label.get().distance(this) > LABEL_CIRCLE_DIST) {
+					label.set(null, null);
+				}		
+			}
+		} else {
+			move(from, to, false);
+		}
+	}
 
 	@Override
 	public void move(Point from, Point to) {
-		center.move(from, to);
-		if (label != null) {
-			if (moveLabel) {
-				label.move(from, to);
-			} else if (label.distance(this) > LABEL_CIRCLE_DIST) {
-				setLabel(null);
-			}		
+		move(from, to, true);
+		if (points != null) {
+			for (int i = 0; i < points.size(); i++) {
+				points.get(i).move(from, to);
+			}
 		}
 		
 	}
-	
-	private Label[] labelArray(Shape[] shapes) {
-		ArrayList<Label> labelList = new ArrayList<Label>();
-		Label label;
-		for (int i = 0; i < shapes.length; i++) {
-			if (shapes[i] instanceof Label) {
-				label = (Label) shapes[i];
-				if (!label.hasCircle()) {
-					labelList.add(label);
-				}
-			}
-		}
-		return labelList.toArray(new Label[0]);
- 	}
-	
-	private Point[] pointArray(Shape[] shapes) {
-		ArrayList<Point> pointList = new ArrayList<Point>();
-		for (int i = 0; i < shapes.length; i++) {
-			if (shapes[i] instanceof Point) {
-				pointList.add((Point) shapes[i]);
-			}
-		}
-		return pointList.toArray(new Point[0]);
- 	}
-	
-	private Box[] boxArray(Shape[] shapes) {
-		ArrayList<Box> boxList = new ArrayList<Box>();
-		for (int i = 0; i < shapes.length; i++) {
-			if (shapes[i] instanceof Box) {
-				boxList.add((Box) shapes[i]);
-			}
-		}
-		return boxList.toArray(new Box[0]);
- 	}
 	
 	protected void computeLabels(Label[] labels) {
 		int labelPos = -1;
 		double lowestDist = Double.MAX_VALUE;
 		for (int i = 0; i < labels.length; i++) {
-			if (labels[i].hasCircle())
+			if (labels[i].circle.get() != null)
 				continue;
 			double dist = this.distance(labels[i]);
 			if (dist < lowestDist) {
@@ -363,21 +210,17 @@ public class Circle implements Drawable, Movable, Deletable {
 				labelPos = i;
 			}
 		}
-		if ((label == null || lowestDist < label.distance(this)) && lowestDist <= LABEL_CIRCLE_DIST && labelPos != -1) {
-			this.setLabel(labels[labelPos]);
+		if ((label.get() == null || lowestDist < label.get().distance(this)) && lowestDist <= LABEL_CIRCLE_DIST && labelPos != -1) {
+			label.set(labels[labelPos], labels[labelPos].circle);
 			moveLabel = false;
 		}
 	}
 	
 	private void computePoints(Point[] points) {
-		if (this.points == null) {
-			this.points = new ArrayList<Point>();
-		} else {
-			removeAllPoints();
-		}
+		this.points.removeAll();
 		for (int i = 0; i < points.length; i++) {
 			if (this.distance(points[i]) == 0) {
-				addPoint(points[i]);
+				this.points.add(points[i], points[i].circles);
 			}
 		}
 	}
@@ -392,31 +235,23 @@ public class Circle implements Drawable, Movable, Deletable {
 		}
 		
 		if (boxPos != -1 && !boxes[boxPos].equals(box)) {
-			this.setBox(boxes[boxPos]);
+		box.set(boxes[boxPos], boxes[boxPos].circles);
 		}
 		/* Inner Boxes */
-		if (this.innerBoxes == null) {
-			this.innerBoxes = new ArrayList<Box>();
-		} else {
-			removeAllInnerBoxes();
-		}
+		innerBoxes.removeAll();
 		for (int i = 0; i < boxes.length; i++) {
 			if (this.contains(boxes[i])) {
-				addInnerBox(boxes[i]);
+				innerBoxes.add(boxes[i], boxes[i].outerCircles);
 			}
 		}
 	}
 	
 	
 	private void computeOverlapBoxes(Box[] boxes) {
-		if (this.overlapBoxes == null) {
-			this.overlapBoxes = new ArrayList<Box>();
-		} else {
-			removeAllOverlapBoxes();
-		}
+		overlapBoxes.removeAll();
 		for (int i = 0; i < boxes.length; i++) {
 			if (boxes[i].intersects(this)) {
-				addOverlapBox(boxes[i]);
+				overlapBoxes.add(boxes[i], boxes[i].overlapCircles);
 			}
 		}
 	}
@@ -425,16 +260,15 @@ public class Circle implements Drawable, Movable, Deletable {
 	public void recompute(boolean moving) {
 		if (shapeList == null)
 			return;
-		Shape[] shapes = shapeList.toArray(new Shape[0]);
-		computeLabels(labelArray(shapes));
-		computePoints(pointArray(shapes));
-		computeOverlapBoxes(boxArray(shapes));
-		computeBoxes(boxArray(shapes));
+		computeLabels(Arrays.labelArray(shapeList));
+		computePoints(Arrays.pointArray(shapeList));
+		computeOverlapBoxes(Arrays.boxArray(shapeList));
+		computeBoxes(Arrays.boxArray(shapeList));
 		if (!moving) {
 			moveLabel = true;
 		}
 		if (!moving && hasLabel()) {
-			label.snapToCircle(this);
+			label.get().snapToCircle(this);
 		}
 	}
 
@@ -480,15 +314,15 @@ public class Circle implements Drawable, Movable, Deletable {
 
 	@Override
 	public void remove() {
-		this.setLabel(null);
+		label.set(null, null);
 		if (points != null) {
 			for (int i = 0; i < points.size(); i++) {
 				points.get(i).recompute(false);
 			}
 		}
-		removeAllPoints();
-		removeAllInnerBoxes();
-		removeAllOverlapBoxes();
-		this.setBox(null);
+		points.removeAll();
+		innerBoxes.removeAll();
+		overlapBoxes.removeAll();
+		box.set(null, null);
 	}
 }

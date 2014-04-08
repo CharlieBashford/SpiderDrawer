@@ -4,6 +4,8 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.util.ArrayList;
 
+import spiderdrawer.shape.containers.MultiContainer;
+import spiderdrawer.shape.containers.SingleContainer;
 import spiderdrawer.shape.interfaces.Deletable;
 import spiderdrawer.shape.interfaces.Drawable;
 import spiderdrawer.shape.interfaces.Movable;
@@ -16,20 +18,20 @@ public class Box implements Drawable, Movable, Deletable {
 	int width;
 	int height;
 	private ArrayList<Shape> shapeList;
-	ArrayList<Circle> circles;
-	ArrayList<Circle> overlapCircles;
-	ArrayList<Circle> outerCircles;
-	ArrayList<Line> lines;
-	ArrayList<Line> overlapLines;
-	Connective connective;
+	MultiContainer<Circle, Box> circles;
+	MultiContainer<Circle, Box> overlapCircles;
+	MultiContainer<Circle, Box> outerCircles;
+	MultiContainer<Line, Box> lines;
+	MultiContainer<Line, Box> overlapLines;
+	SingleContainer<Connective, Box> connective;
 	boolean leftConnective;
-	ArrayList<Connective> innerConnectives;
-	ArrayList<Box> innerBoxes;
-	ArrayList<Box> overlapBoxes;
-	ArrayList<Box> outerBoxes;
+	MultiContainer<Connective, Box> innerConnectives;
+	MultiContainer<Box, Box> innerBoxes;
+	MultiContainer<Box, Box> outerBoxes;
+	MultiContainer<Box, Box> overlapBoxes;
+	MultiContainer<Label, Box> labels;
+	MultiContainer<Point, Box> points;
 	ArrayList<Spider> spiders;
-	ArrayList<Label> labels;
-	ArrayList<Point> points;
 
 
 	public Box(Point topLeft, int width, int height) {
@@ -42,8 +44,24 @@ public class Box implements Drawable, Movable, Deletable {
 		this(new Point(topLeftX, topLeftY), width, height);
 	}
 	
+	private void createContainers() {
+		circles = new MultiContainer<Circle, Box>(this);
+		overlapCircles = new MultiContainer<Circle, Box>(this);
+		outerCircles = new MultiContainer<Circle, Box>(this);
+		lines = new MultiContainer<Line, Box>(this);
+		overlapLines = new MultiContainer<Line, Box>(this);
+		connective = new SingleContainer<Connective, Box>(this);
+		innerConnectives = new MultiContainer<Connective, Box>(this);
+		innerBoxes = new MultiContainer<Box, Box>(this);
+		outerBoxes = new MultiContainer<Box, Box>(this);
+		overlapBoxes = new MultiContainer<Box, Box>(this);
+		labels = new MultiContainer<Label, Box>(this);
+		points = new MultiContainer<Point, Box>(this);
+	}
+	
 	public static Box create(int topLeftX, int topLeftY, int width, int height, ArrayList<Shape> shapeList) {
 		Box box = new Box(topLeftX, topLeftY, width, height);
+		box.createContainers();
 		box.shapeList = shapeList;
 		box.recompute(false);
 		return box;
@@ -97,395 +115,36 @@ public class Box implements Drawable, Movable, Deletable {
 		return Math.min(Math.min(top.distance(p), bottom.distance(p)), Math.min(left.distance(p), right.distance(p)));
 	}
 	
-	protected void addCircle(Circle circle) {
-		if (this.circles == null)
-			this.circles = new ArrayList<Circle>();
-		circles.add(circle);
-		if (circle != null && !this.equals(circle.getBox())) {
-			circle.setBox(this);
-		}
-	}
-	
-	protected void removeCircle(Circle circle) {
-		circles.remove(circle);
-		if (circle != null && this.equals(circle.getBox())) {
-			circle.setBox(null);
-		}
-	}
-	
-	protected boolean containsCircle(Circle circle) {
-		if (circles != null)
-			return circles.contains(circle);
-		return false;
-	}
-	
-	protected void removeAllCircles() {
-		while(circles.size() > 0) {
-			removeCircle(circles.get(0));
-		}
-	}
-	
-	protected boolean containsCircle() {
-		return (circles != null) && (circles.size() > 0);
-	}
-	
-	protected void addLabel(Label label) {
-		if (this.labels == null)
-			this.labels = new ArrayList<Label>();
-		labels.add(label);
-		if (label != null && !this.equals(label.getBox())) {
-			label.setBox(this);
-		}
-	}
-	
-	protected void removeLabel(Label label) {
-		labels.remove(label);
-		if (label != null && this.equals(label.getBox())) {
-			label.setBox(null);
-		}
-	}
-	
-	protected boolean containsLabel(Label label) {
-		if (labels != null)
-			return labels.contains(label);
-		return false;
-	}
-	
-	protected void removeAllLabels() {
-		while(labels.size() > 0) {
-			removeLabel(labels.get(0));
-		}
-	}
-	
-	protected void addLine(Line line) {
-		if (this.lines == null)
-			this.lines = new ArrayList<Line>();
-		lines.add(line);
-		if (line != null && !this.equals(line.getBox())) {
-			line.setBox(this);
-		}
-	}
-	
-	protected void removeLine(Line line) {
-		lines.remove(line);
-		if (line != null && this.equals(line.getBox())) {
-			line.setBox(null);
-		}
-	}
-	
-	protected boolean containsLine(Line line) {
-		if (lines != null)
-			return lines.contains(line);
-		return false;
-	}
-	
-	protected void removeAllLines() {
-		while(lines.size() > 0) {
-			removeLine(lines.get(0));
-		}
-	}
-	
-	protected boolean containsLine() {
-		return (lines != null) && (lines.size() > 0);
-	}
-	
-	protected void addPoint(Point point) {
-		if (this.points == null)
-			this.points = new ArrayList<Point>();
-		points.add(point);
-		if (point != null && !this.equals(point.getBox())) {
-			point.setBox(this);
-		}
-	}
-	
-	protected void removePoint(Point point) {
-		points.remove(point);
-		if (point != null && this.equals(point.getBox())) {
-			point.setBox(null);
-		}
-	}
-	
-	protected boolean containsPoint(Point point) {
-		if (points != null)
-			return points.contains(point);
-		return false;
-	}
-	
-	protected void removeAllPoints() {
-		while(points.size() > 0) {
-			removePoint(points.get(0));
-		}
-	}
-	
-	protected void addOverlapCircle(Circle circle) {
-		if (this.overlapCircles == null)
-			this.overlapCircles = new ArrayList<Circle>();
-		overlapCircles.add(circle);
-		if (circle != null && !circle.containsOverlapBox(this)) {
-			circle.addOverlapBox(this);
-		}
-	}
-	
-	protected void removeOverlapCircle(Circle circle) {
-		overlapCircles.remove(circle);
-		if (circle != null && circle.containsOverlapBox(this)) {
-			circle.removeOverlapBox(this);
-		}
-	}
-	
-	protected boolean containsOverlapCircle(Circle circle) {
-		if (overlapCircles != null)
-			return overlapCircles.contains(circle);
-		return false;
-	}
-	
-	protected void removeAllOverlapCircles() {
-		while(overlapCircles.size() > 0) {
-			removeOverlapCircle(overlapCircles.get(0));
-		}
-	}
-	
-	protected boolean isOverlapCircles() {
-		return (overlapCircles != null) && (overlapCircles.size() > 0);
-	}
-	
-	protected void addOuterCircle(Circle circle) {
-		if (this.outerCircles == null)
-			this.outerCircles = new ArrayList<Circle>();
-		outerCircles.add(circle);
-		if (circle != null && !circle.containsInnerBox(this)) {
-			circle.addInnerBox(this);
-		}
-	}
-	
-	protected void removeOuterCircle(Circle circle) {
-		outerCircles.remove(circle);
-		if (circle != null && circle.containsInnerBox(this)) {
-			circle.removeInnerBox(this);
-		}
-	}
-	
-	protected boolean containsOuterCircle(Circle circle) {
-		if (outerCircles != null)
-			return outerCircles.contains(circle);
-		return false;
-	}
-	
-	protected boolean containsOuterCircle() {
-		return (outerCircles != null) && (outerCircles.size() > 0);
-	}
-	
-	protected void removeAllOuterCircles() {
-		while(outerCircles.size() > 0) {
-			removeOuterCircle(outerCircles.get(0));
-		}
-	}
-	
-	protected void addOverlapLine(Line line) {
-		if (this.overlapLines == null)
-			this.overlapLines = new ArrayList<Line>();
-		overlapLines.add(line);
-		if (line != null && !line.containsOverlapBox(this)) {
-			line.addOverlapBox(this);
-		}
-	}
-	
-	protected void removeOverlapLine(Line line) {
-		overlapLines.remove(line);
-		if (line != null && line.containsOverlapBox(this)) {
-			line.removeOverlapBox(this);
-		}
-	}
-	
-	protected boolean containsOverlapLine(Line line) {
-		if (overlapLines != null)
-			return overlapLines.contains(line);
-		return false;
-	}
-	
-	protected void removeAllOverlapLines() {
-		while (overlapLines.size() > 0) {
-			removeOverlapLine(overlapLines.get(0));
-		}
-	}
-	
-	protected boolean isOverlapLines() {
-		return (overlapLines != null) && (overlapLines.size() > 0);
-	}
-	
-	protected void addInnerBox(Box box) {
-		if (this.innerBoxes == null)
-			this.innerBoxes = new ArrayList<Box>();
-		innerBoxes.add(box);
-		if (box != null && !box.containsOuterBox(this)) {
-			box.addOuterBox(this);
-		}
-	}
-	
-	protected void removeInnerBox(Box box) {
-		innerBoxes.remove(box);
-		if (box != null && box.containsOuterBox(this)) {
-			box.removeOuterBox(this);
-		}
-	}
-	
-	protected boolean containsInnerBox(Box box) {
-		if (innerBoxes != null)
-			return innerBoxes.contains(box);
-		return false;
-	}
-	
-	protected void removeAllInnerBoxes() {
-		while(innerBoxes.size() > 0) {
-			removeInnerBox(innerBoxes.get(0));
-		}
-	}
-	
-	protected boolean containsInnerBoxes() {
-		return (innerBoxes != null) && (innerBoxes.size() > 0);
-	}
-	
-	protected void addOuterBox(Box box) {
-		if (this.outerBoxes == null)
-			this.outerBoxes = new ArrayList<Box>();
-		outerBoxes.add(box);
-		if (box != null && !box.containsInnerBox(this)) {
-			box.addInnerBox(this);
-		}
-	}
-	
-	protected void removeOuterBox(Box box) {
-		outerBoxes.remove(box);
-		if (box != null && box.containsInnerBox(this)) {
-			box.removeInnerBox(this);
-		}
-	}
-	
-	protected boolean containsOuterBox(Box box) {
-		if (outerBoxes != null)
-			return outerBoxes.contains(box);
-		return false;
-	}
-	
-	protected void removeAllOuterBoxes() {
-		while(outerBoxes.size() > 0) {
-			removeOuterBox(outerBoxes.get(0));
-		}
-	}
-	
-	protected boolean containsOuterBoxes() {
-		return (outerBoxes != null) && (outerBoxes.size() > 0);
-	}
-	
-	protected void addOverlapBox(Box box) {
-		if (this.overlapBoxes == null)
-			this.overlapBoxes = new ArrayList<Box>();
-		overlapBoxes.add(box);
-		if (box != null && !box.containsOverlapBox(this)) {
-			box.addOverlapBox(this);
-		}
-	}
-	
-	protected void removeOverlapBox(Box box) {
-		overlapBoxes.remove(box);
-		if (box != null && box.containsOverlapBox(this)) {
-			box.removeOverlapBox(this);
-		}
-	}
-	
-	protected boolean containsOverlapBox(Box box) {
-		if (overlapBoxes != null)
-			return overlapBoxes.contains(box);
-		return false;
-	}
-	
-	protected void removeAllOverlapBoxes() {
-		while(overlapBoxes.size() > 0) {
-			removeOverlapBox(overlapBoxes.get(0));
-		}
-	}
-	
-	protected boolean isOverlapBoxes() {
-		return (overlapBoxes != null) && (overlapBoxes.size() > 0);
-	}
-
-	protected void setConnective(Connective connective, boolean left) {
-		Connective oldConnective = this.connective;
-		boolean oldLeftConnective = this.leftConnective;
-		this.connective = connective;
-		this.leftConnective = left;
-		if (oldConnective != null) {
-			if (oldLeftConnective) { //Left and right are swapped due to perspective.
-				oldConnective.setRightBox(null);
-			} else {
-				oldConnective.setLeftBox(null);
-			}
-		}	
-		if (connective != null) {
-			if (left) { //Left and right are swapped due to perspective.
-				Box box = connective.getRightBox();
-				if (!this.equals(box)) {
-					connective.setRightBox(this);
-				}
-			} else {
-				Box box = connective.getLeftBox();
-				if (!this.equals(box)) {
-					connective.setLeftBox(this);
-				}
-			}
-		}
-	}
-	
-	public Connective getConnective() {
-		return connective;
-	}
-	
-	protected void addInnerConnective(Connective connective) {
-		if (this.innerConnectives == null)
-			this.innerConnectives = new ArrayList<Connective>();
-		innerConnectives.add(connective);
-		if (connective != null && !this.equals(connective.getOuterBox())) {
-			connective.setOuterBox(this);
-		}
-	}
-	
-	protected void removeInnerConnective(Connective connective) {
-		innerConnectives.remove(connective);
-		if (connective != null && this.equals(connective.getOuterBox())) {
-			connective.setOuterBox(null);
-		}
-	}
-	
-	protected boolean containsInnerConnective(Connective connective) {
-		if (innerConnectives != null)
-			return innerConnectives.contains(connective);
-		return false;
-	}
-	
-	protected void removeAllInnerConnectives() {
-		while(innerConnectives.size() > 0) {
-			removeInnerConnective(innerConnectives.get(0));
-		}
-	}
-	
-	protected boolean containsInnerConnnective() {
-		return (innerConnectives != null) && (innerConnectives.size() > 0);
-	}
-	
-	protected boolean singleInnerConnective() {
-		return innerConnectives != null && innerConnectives.size() == 1;
-	}
-	
 	public boolean isOverlapping() {
-		return isOverlapCircles()  || isOverlapLines() || isOverlapBoxes(); 
+		return !overlapCircles.isEmpty()  || !overlapLines.isEmpty() || !overlapBoxes.isEmpty(); 
 	}
 	
 	public boolean containsSpider() {
-		return containsLine() || containsCircle();
+		return !lines.isEmpty() || !circles.isEmpty();
+	}
+	
+	public boolean completeConnectives() {
+		if (innerConnectives == null || innerConnectives.size() == 0)
+			return innerBoxes.isEmpty();
+		int numBoxes = 0;
+		for (int i = 0; i < innerConnectives.size(); i++) {
+			if (innerConnectives.get(i).isFullyConnected()) {
+				if (innerConnectives.get(i).logical == Logical.NEGATION)
+					numBoxes += 1;
+				else
+					numBoxes += 2;
+			}
+		}
+		
+		return !innerBoxes.isEmpty() && numBoxes == innerBoxes.size();
+	}
+	
+	public boolean singleInnerConnective() {
+		return innerConnectives.size() == 1;
 	}
 	
 	public boolean isValid() {
-		return !isOverlapping() && !(containsSpider() && containsInnerBoxes()) && !containsOuterCircle() && (singleInnerConnective() || !containsInnerConnnective());
+		return completeConnectives() && !isOverlapping() && !(containsSpider() && !innerBoxes.isEmpty()) && outerCircles.isEmpty() && (singleInnerConnective() || innerConnectives.isEmpty());
 	}
 	
 	@Override
@@ -507,7 +166,7 @@ public class Box implements Drawable, Movable, Deletable {
 				if (innerBoxes == null || innerBoxes.size() == 0) {
 					if (circles != null) {
 						for (int i = 0; i < circles.size(); i++) {
-							circles.get(i).move(from, to);
+							circles.get(i).move(from, to, true);
 						}
 					}
 					if (spiders != null) {
@@ -522,9 +181,9 @@ public class Box implements Drawable, Movable, Deletable {
 					}
 				}
 			}
-			if (connective != null) {
-				if ((leftConnective && this.leftDistance(connective) > CONNECTIVE_BOX_DIST) || (!leftConnective && this.rightDistance(connective) > CONNECTIVE_BOX_DIST)) {
-					setConnective(null, leftConnective);
+			if (connective.get() != null) {
+				if ((leftConnective && this.leftDistance(connective.get()) > CONNECTIVE_BOX_DIST) || (!leftConnective && this.rightDistance(connective.get()) > CONNECTIVE_BOX_DIST)) {
+					connective.set(null, null);
 				}
 			}
 		} else {
@@ -547,175 +206,85 @@ public class Box implements Drawable, Movable, Deletable {
 		}
 	}
 	
-	private Circle[] circleArray(Shape[] shapes) {
-		ArrayList<Circle> circleList = new ArrayList<Circle>();
-		for (int i = 0; i < shapes.length; i++) {
-			if (shapes[i] instanceof Circle) {
-				circleList.add((Circle) shapes[i]);
-			}
-		}
-		return circleList.toArray(new Circle[0]);
- 	}
-	
-	private Line[] lineArray(Shape[] shapes) {
-		ArrayList<Line> lineList = new ArrayList<Line>();
-		for (int i = 0; i < shapes.length; i++) {
-			if (shapes[i] instanceof Line) {
-				lineList.add((Line) shapes[i]);
-			}
-		}
-		return lineList.toArray(new Line[0]);
- 	}
-	
-	private Box[] boxArray(Shape[] shapes) {
-		ArrayList<Box> boxList = new ArrayList<Box>();
-		for (int i = 0; i < shapes.length; i++) {
-			if (shapes[i] instanceof Box) {
-				boxList.add((Box) shapes[i]);
-			}
-		}
-		return boxList.toArray(new Box[0]);
- 	}
-	
 	private void computeBoxes(Box[] boxes) {
-		if (this.innerBoxes == null) {
-			this.innerBoxes = new ArrayList<Box>();
-		} else {
-			removeAllInnerBoxes();
-		}
-		if (this.outerBoxes == null) {
-			this.outerBoxes = new ArrayList<Box>();
-		} else {
-			removeAllOuterBoxes();
-		}
+		innerBoxes.removeAll();
+		outerBoxes.removeAll();
 		for (int i = 0; i < boxes.length; i++) {
 			if (this.contains(boxes[i])) {
-				addInnerBox(boxes[i]);
+				innerBoxes.add(boxes[i], boxes[i].outerBoxes);
 			}
 			if (boxes[i].contains(this)) {
-				addOuterBox(boxes[i]);
+				outerBoxes.add(boxes[i], boxes[i].innerBoxes);
 			}
 		}
 	}
 	
 	private void computeOverlapBoxes(Box[] boxes) {
-		if (this.overlapBoxes == null) {
-			this.overlapBoxes = new ArrayList<Box>();
-		} else {
-			removeAllOverlapBoxes();
-		}
+		overlapBoxes.removeAll();
 		for (int i = 0; i < boxes.length; i++) {
 			if (this.intersects(boxes[i])) {
-				addOverlapBox(boxes[i]);
+				overlapBoxes.add(boxes[i], boxes[i].overlapBoxes);
 			}
 		}
 	}
 	
 	private void computeCircles(Circle[] circles) {
-		if (this.outerCircles == null) {
-			this.outerCircles = new ArrayList<Circle>();
-		} else {
-			removeAllOuterCircles();
-		}
+		outerCircles.removeAll();
 		for (int i = 0; i < circles.length; i++) {
 			if (circles[i].contains(this)) {
-				addOuterCircle(circles[i]);
+				outerCircles.add(circles[i], circles[i].innerBoxes);
 			}
 		}
 		
-		if (this.circles == null) {
-			this.circles = new ArrayList<Circle>();
-		} else {
-			removeAllCircles();
-		}
+		this.circles.removeAll();
 		for (int i = 0; i < circles.length; i++) {
 			if (this.contains(circles[i]) && !this.innerBoxesContains(circles[i])) {
-				addCircle(circles[i]);
+				this.circles.add(circles[i], circles[i].box);
 			}
 		}
 	}
 	
 	private void computeOverlapCircles(Circle[] circles) {
-		if (this.overlapCircles == null) {
-			this.overlapCircles = new ArrayList<Circle>();
-		} else {
-			removeAllOverlapCircles();
-		}
+		overlapCircles.removeAll();
 		for (int i = 0; i < circles.length; i++) {
 			if (this.intersects(circles[i])) {
-				addOverlapCircle(circles[i]);
+				overlapCircles.add(circles[i], circles[i].overlapBoxes);
 			}
 		}
 	}
 	
 	private void computeLines(Line[] lines) {
-		if (this.lines == null) {
-			this.lines = new ArrayList<Line>();
-		} else {
-			removeAllLines();
-		}
-		if (this.containsInnerBoxes()) {
+		this.lines.removeAll();
+		if (!innerBoxes.isEmpty()) {
 			return;
 		}
 		for (int i = 0; i < lines.length; i++) {
 			if (this.contains(lines[i])) {
-				addLine(lines[i]);
+				this.lines.add(lines[i], lines[i].box);
 			}
 		}
 	}
 	
 	private void computePoints(Point[] points) {
-		if (this.points == null) {
-			this.points = new ArrayList<Point>();
-		} else {
-			removeAllPoints();
-		}
-		if (this.containsInnerBoxes()) {
+		this.points.removeAll();
+		if (!innerBoxes.isEmpty()) {
 			return;
 		}
 		for (int i = 0; i < points.length; i++) {
 			if (this.contains(points[i])) {
-				addPoint(points[i]);
+				this.points.add(points[i], points[i].box);
 			}
 		}
 	}
 	
 	private void computeOverlapLines(Line[] lines) {
-		if (this.overlapLines == null) {
-			this.overlapLines = new ArrayList<Line>();
-		} else {
-			removeAllOverlapLines();
-		}
+		overlapLines.removeAll();
 		for (int i = 0; i < lines.length; i++) {
 			if (this.intersects(lines[i])) {
-				addOverlapLine(lines[i]);
+				overlapLines.add(lines[i], lines[i].overlapBoxes);
 			}
 		}
 	}
-	
-	private Label[] labelArray(Shape[] shapes) {
-		ArrayList<Label> labelList = new ArrayList<Label>();
-		Label label;
-		for (int i = 0; i < shapes.length; i++) {
-			if (shapes[i] instanceof Label) {
-				label = (Label) shapes[i];
-				//if (!label.hasCircle()) {
-					labelList.add(label);
-				//}
-			}
-		}
-		return labelList.toArray(new Label[0]);
- 	}
-	
-	private Connective[] connectiveArray(Shape[] shapes) {
-		ArrayList<Connective> connectiveList = new ArrayList<Connective>();
-		for (int i = 0; i < shapes.length; i++) {
-			if (shapes[i] instanceof Connective) {
-				connectiveList.add((Connective) shapes[i]);
-			}
-		}
-		return connectiveList.toArray(new Connective[0]);
- 	}
 	
 	private void computeConnectives(Connective[] connectives) {
 		int connectivePos = -1;
@@ -733,8 +302,12 @@ public class Box implements Drawable, Movable, Deletable {
 				}
 			}
 		}
-		if (connective == null && lowestDist <= CONNECTIVE_BOX_DIST && connectivePos != -1) {
-			this.setConnective(connectives[connectivePos], left);
+		if (connective.get() == null && lowestDist <= CONNECTIVE_BOX_DIST && connectivePos != -1) {
+			if (left)
+				connective.set(connectives[connectivePos], connectives[connectivePos].rightBox);
+			else 
+				connective.set(connectives[connectivePos], connectives[connectivePos].leftBox);
+			leftConnective = left;
 		}
 	}
 	
@@ -772,27 +345,19 @@ public class Box implements Drawable, Movable, Deletable {
 	}
 	
 	private void computeInnerConnectives(Connective[] connectives) {
-		if (this.innerConnectives == null) {
-			this.innerConnectives = new ArrayList<Connective>();
-		} else {
-			removeAllInnerConnectives();
-		}
+		innerConnectives.removeAll();
 		for (int i = 0; i < connectives.length; i++) {
 			if (this.contains(connectives[i]) && !innerBoxesContains(connectives[i])) {
-				addInnerConnective(connectives[i]);
+				innerConnectives.add(connectives[i], connectives[i].outerBox);
 			}
 		}
 	}
 	
 	private void computeLabels(Label[] labels) {
-		if (this.labels == null) {
-			this.labels = new ArrayList<Label>();
-		} else {
-			removeAllLabels();
-		}
+		this.labels.removeAll();
 		for (int i = 0; i < labels.length; i++) {
 			if (this.contains(labels[i]) && !innerBoxesContains(labels[i])) {
-				addLabel(labels[i]);
+				this.labels.add(labels[i], labels[i].box);
 			}
 		}
 	}
@@ -801,24 +366,24 @@ public class Box implements Drawable, Movable, Deletable {
 	public void recompute(boolean moving) {
 		if (shapeList == null)
 			return;
-		Shape[] shapes = shapeList.toArray(new Shape[0]);
 		if (!moving) {
-			computeBoxes(boxArray(shapes));
-			computeCircles(circleArray(shapes));
+			computeBoxes(Arrays.boxArray(shapeList));
+			computeCircles(Arrays.circleArray(shapeList));
 			for (int i = 0; i < this.circles.size(); i++) {
-				this.circles.get(i).computeLabels(labelArray(shapes));
+				this.circles.get(i).computeLabels(Arrays.labelArray(shapeList));
 			}
-			computeLabels(labelArray(shapes));
+			computeLabels(Arrays.labelArray(shapeList));
 			for (int i = 0; i < this.labels.size(); i++) {
-				this.labels.get(i).computeLabels(labelArray(shapes));
+				this.labels.get(i).computeLabels(Arrays.labelArray(shapeList));
 			}
-			computeLines(lineArray(shapes));
+			computeLines(Arrays.lineArray(shapeList));
+			computePoints(Arrays.pointArray(shapeList));
 		}
-		computeInnerConnectives(connectiveArray(shapes));
-		computeConnectives(connectiveArray(shapes));
-		computeOverlapCircles(circleArray(shapes));
-		computeOverlapLines(lineArray(shapes));
-		computeOverlapBoxes(boxArray(shapes));
+		computeInnerConnectives(Arrays.connectiveArray(shapeList));
+		computeConnectives(Arrays.connectiveArray(shapeList));
+		computeOverlapCircles(Arrays.circleArray(shapeList));
+		computeOverlapLines(Arrays.lineArray(shapeList));
+		computeOverlapBoxes(Arrays.boxArray(shapeList));
 		computeSpiders();
 	}
 	
@@ -828,7 +393,7 @@ public class Box implements Drawable, Movable, Deletable {
 		spiders.add(spider);
 	}
 	
-	private void computeSpiders() {
+	protected void computeSpiders() {
 		if (spiders != null)
 			spiders.clear();
 		if (lines != null) {
@@ -977,14 +542,17 @@ public class Box implements Drawable, Movable, Deletable {
 
 	@Override
 	public void remove() {
-		removeAllInnerBoxes();
-		removeAllOuterBoxes();	
-		removeAllCircles();
-		removeAllLines();
-		if (labels != null) {
-			for (int i = 0; i < labels.size(); i++)
-				labels.get(i).recompute(false);
-		}
-		removeAllLabels();
+		circles.removeAll();
+		innerBoxes.removeAll();
+		outerBoxes.removeAll();	
+		points.removeAll();
+		lines.removeAll();
+		overlapLines.removeAll();
+		for (int i = 0; i < labels.size(); i++)
+			labels.get(i).recompute(false);
+		labels.removeAll();
+		for (int i = 0; i < innerConnectives.size(); i++)
+			innerConnectives.get(i).recompute(false);
+		innerConnectives.removeAll();
 	}
 }

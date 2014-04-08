@@ -5,6 +5,8 @@ import java.awt.Graphics2D;
 import java.util.ArrayList;
 import java.util.Date;
 
+import spiderdrawer.shape.containers.MultiContainer;
+import spiderdrawer.shape.containers.SingleContainer;
 import spiderdrawer.shape.interfaces.Deletable;
 import spiderdrawer.shape.interfaces.Drawable;
 import spiderdrawer.shape.interfaces.Movable;
@@ -21,8 +23,8 @@ public class Point implements Drawable, Movable, Deletable {
 	Line line2;
 	boolean line2Start;
 	private ArrayList<Shape> shapeList;
-	ArrayList<Circle> circles;
-	Box box;
+	MultiContainer<Circle, Point> circles;
+	SingleContainer<Box, Point> box;
 	
 	public Point(int x, int y) {
 		this.x = x;
@@ -30,8 +32,14 @@ public class Point implements Drawable, Movable, Deletable {
 		time = (new Date()).getTime();
 	}
 	
+	private void createContainers() {
+		circles = new MultiContainer<Circle, Point>(this);
+		box = new SingleContainer<Box, Point>(this);
+	}
+	
 	public static Point create(int x, int y, ArrayList<Shape> shapeList) {
 		Point point = new Point(x, y);
+		point.createContainers();
 		point.shapeList = shapeList;
 		point.recompute(false);
 		return point;
@@ -94,34 +102,6 @@ public class Point implements Drawable, Movable, Deletable {
 		return 0;
 	}
 	
-	protected void addCircle(Circle circle) {
-		if (this.circles == null)
-			this.circles = new ArrayList<Circle>();
-		circles.add(circle);
-		if (circle != null && !circle.containsPoint(this)) {
-			circle.addPoint(this);
-		}
-	}
-	
-	protected boolean containsCircle(Circle circle) {
-		if (circle != null)
-			return circles.contains(circle);
-		return false;
-	}
-	
-	protected void removeCircle(Circle circle) {
-		circles.remove(circle);
-		if (circle != null && circle.containsPoint(this)) {
-			circle.removePoint(this);
-		}
-	}
-	
-	protected void removeAllCircles() {
-		while (circles.size() > 0) {
-			removeCircle(circles.get(0));
-		}
-	}
-	
 	protected void setLine1(Line l, boolean start) {
 		Line oldLine = line1;
 		boolean oldLineStart = line1Start;
@@ -149,21 +129,6 @@ public class Point implements Drawable, Movable, Deletable {
 		}
 	}
 	
-	protected void setBox(Box box) {	
-		Box oldBox = this.box;
-		this.box = box;
-		if (oldBox != null) {
-			oldBox.removePoint(this);
-		}
-		if (box != null && !box.containsPoint(this)) {
-			box.addPoint(this);
-		}
-	}
-	
-	protected Box getBox() {
-		return box;
-	}
-	
 	@Override
 	public void draw(Graphics2D g2) {
 		if (isPointSameCircle())
@@ -186,30 +151,6 @@ public class Point implements Drawable, Movable, Deletable {
 	public double boundaryDistance(Point p) {
 		return distance(p);
 	}
-	
-	private Line[] lineArray(Shape[] shapes) {
-		ArrayList<Line> lineList = new ArrayList<Line>();
-		Line line;
-		for (int i = 0; i < shapes.length; i++) {
-			if (shapes[i] instanceof Line) {
-				line = (Line) shapes[i];
-				if (!line.hasBothEnds()) {
-					lineList.add(line);
-				}
-			}
-		}
-		return lineList.toArray(new Line[0]);
- 	}
-	
-	private Circle[] circleArray(Shape[] shapes) {
-		ArrayList<Circle> circleList = new ArrayList<Circle>();
-		for (int i = 0; i < shapes.length; i++) {
-			if (shapes[i] instanceof Circle) {
-				circleList.add((Circle) shapes[i]);
-			}
-		}
-		return circleList.toArray(new Circle[0]);
- 	}
 	
 	private void computeLines(Line[] lines) {
 		int line1Pos = -1;
@@ -271,15 +212,25 @@ public class Point implements Drawable, Movable, Deletable {
 	}
 	
 	private void computeCircles(Circle[] circles) {
-		if (this.circles == null) {
-			this.circles = new ArrayList<Circle>();
-		} else {
-			removeAllCircles();
-		}
+		this.circles.removeAll();
 		for (int i = 0; i < circles.length; i++) {
 			if (circles[i].distance(this) == 0) {
-				addCircle(circles[i]);
+				this.circles.add(circles[i], circles[i].points);
 			}
+		}
+	}
+	
+	private void computeBoxes(Box[] boxes) {
+		int boxPos = -1;
+		for (int i = 0; i < boxes.length; i++) {
+			if (boxes[i].contains(this) && boxes[i].innerBoxes.isEmpty()) {
+				boxPos = i;
+				break;
+			}
+		}
+		
+		if (boxPos != -1 && !boxes[boxPos].equals(box)) {
+			box.set(boxes[boxPos], boxes[boxPos].points);
 		}
 	}
 
@@ -287,9 +238,11 @@ public class Point implements Drawable, Movable, Deletable {
 	public void recompute(boolean moving) {
 		if (shapeList == null)
 			return;
-		Shape[] shapes = shapeList.toArray(new Shape[0]);
-		computeLines(lineArray(shapes));
-		computeCircles(circleArray(shapes));
+		computeLines(Arrays.lineArray(shapeList));
+		computeCircles(Arrays.circleArray(shapeList));
+		computeBoxes(Arrays.boxArray(shapeList));
+		if (box.get() != null)
+			box.get().computeSpiders();
 	}
 	
 	protected boolean isPointSameCircle() {

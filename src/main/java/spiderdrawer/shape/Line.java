@@ -4,6 +4,8 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.util.ArrayList;
 
+import spiderdrawer.shape.containers.MultiContainer;
+import spiderdrawer.shape.containers.SingleContainer;
 import spiderdrawer.shape.interfaces.Deletable;
 import spiderdrawer.shape.interfaces.Drawable;
 import spiderdrawer.shape.interfaces.Movable;
@@ -20,8 +22,8 @@ public class Line implements Drawable, Movable, Deletable {
 	private ArrayList<Shape> shapeList;
 	Point lastMovedTo;
 	double lastDistAlong;
-	Box box;
-	ArrayList<Box> overlapBoxes;
+	SingleContainer<Box, Line> box;
+	MultiContainer<Box, Line> overlapBoxes;
 	
 	public Line (Point start, Point end) {
 		this.start = start;
@@ -32,8 +34,14 @@ public class Line implements Drawable, Movable, Deletable {
 		this(new Point(startX, startY), new Point(endX, endY));
 	}
 	
+	private void createContainers() {
+		box = new SingleContainer<Box, Line>(this);
+		overlapBoxes = new MultiContainer<Box, Line>(this);
+	}
+	
 	public static Line create(int startX, int startY, int endX, int endY, ArrayList<Shape> shapeList) {
 		Line line = new Line(startX, startY, endX, endY);
+		line.createContainers();
 		line.shapeList = shapeList;
 		line.recompute(false);
 		return line;
@@ -59,30 +67,6 @@ public class Line implements Drawable, Movable, Deletable {
 		}
 		return null;
 	}
-	
-	private Point[] pointArray(Shape[] shapes) {
-		ArrayList<Point> pointList = new ArrayList<Point>();
-		Point point;
-		for (int i = 0; i < shapes.length; i++) {
-			if (shapes[i] instanceof Point) {
-				point = (Point) shapes[i];
-				if (!point.isFullyConnected()) {
-					pointList.add(point);
-				}
-			}
-		}
-		return pointList.toArray(new Point[0]);
- 	}
-
-	private Box[] boxArray(Shape[] shapes) {
-		ArrayList<Box> boxList = new ArrayList<Box>();
-		for (int i = 0; i < shapes.length; i++) {
-			if (shapes[i] instanceof Box) {
-				boxList.add((Box) shapes[i]);
-			}
-		}
-		return boxList.toArray(new Box[0]);
- 	}
 	
 	protected boolean isSet(boolean start) {
 		return (start)? this.startSet : this.endSet;
@@ -141,14 +125,10 @@ public class Line implements Drawable, Movable, Deletable {
 	}
 	
 	private void computeOverlapBoxes(Box[] boxes) {
-		if (this.overlapBoxes == null) {
-			this.overlapBoxes = new ArrayList<Box>();
-		} else {
-			removeAllOverlapBoxes();
-		}
+		overlapBoxes.removeAll();
 		for (int i = 0; i < boxes.length; i++) {
 			if (boxes[i].intersects(this)) {
-				addOverlapBox(boxes[i]);
+				overlapBoxes.add(boxes[i], boxes[i].overlapLines);
 			}
 		}
 	}
@@ -156,22 +136,20 @@ public class Line implements Drawable, Movable, Deletable {
 	private void computeBoxes(Box[] boxes) {
 		int boxPos = -1;
 		for (int i = 0; i < boxes.length; i++) {
-			if (boxes[i].contains(this) && !boxes[i].containsInnerBoxes()) {
+			if (boxes[i].contains(this) && boxes[i].innerBoxes.isEmpty()) {
 				boxPos = i;
 			}
 		}
 		
 		if (boxPos != -1 && !boxes[boxPos].equals(box)) {
-			this.setBox(boxes[boxPos]);
+			box.set(boxes[boxPos], boxes[boxPos].lines);
 		}
 	}
 	
 	@Override
 	public void recompute(boolean moving) {
 		if (shapeList == null)
-			return;
-		Shape[] shapes = shapeList.toArray(new Shape[0]);
-		
+			return;		
 		if (startSet) {
 			start.recompute(moving);
 		}
@@ -179,9 +157,11 @@ public class Line implements Drawable, Movable, Deletable {
 		if (endSet) {
 			end.recompute(moving);
 		}
-		computePoints(pointArray(shapes));
-		computeBoxes(boxArray(shapes));
-		computeOverlapBoxes(boxArray(shapes));
+		computePoints(Arrays.pointArray(shapeList));
+		computeBoxes(Arrays.boxArray(shapeList));
+		computeOverlapBoxes(Arrays.boxArray(shapeList));
+		if (box.get() != null)
+			box.get().computeSpiders();
 	}
 	
 	protected void setPoint(Point point, boolean start) {
@@ -300,49 +280,6 @@ public class Line implements Drawable, Movable, Deletable {
 				return true;
 			}
 			return false;
-		}
-	}
-	
-	protected void setBox(Box box) {	
-		Box oldBox = this.box;
-		this.box = box;
-		if (oldBox != null) {
-			oldBox.removeLine(this);
-		}
-		if (box != null && !box.containsLine(this)) {
-			box.addLine(this);
-		}
-	}
-	
-	protected Box getBox() {
-		return box;
-	}
-	
-	protected void addOverlapBox(Box box) {
-		if (this.overlapBoxes == null)
-			this.overlapBoxes = new ArrayList<Box>();
-		overlapBoxes.add(box);
-		if (box != null && !box.containsOverlapLine(this)) {
-			box.addOverlapLine(this);
-		}
-	}
-	
-	protected void removeOverlapBox(Box box) {
-		overlapBoxes.remove(box);
-		if (box != null && box.containsOverlapLine(this)) {
-			box.removeOverlapLine(this);
-		}
-	}
-	
-	protected boolean containsOverlapBox(Box box) {
-		if (overlapBoxes != null)
-			return overlapBoxes.contains(box);
-		return false;
-	}
-	
-	protected void removeAllOverlapBoxes() {
-		while (overlapBoxes.size() > 0) {
-			removeOverlapBox(overlapBoxes.get(0));
 		}
 	}
 	
@@ -497,6 +434,8 @@ public class Line implements Drawable, Movable, Deletable {
 		if (endSet) {
 			this.setPoint(null, false);
 		}
+		box.set(null, null);
+		overlapBoxes.removeAll();
 	}
 	
 }

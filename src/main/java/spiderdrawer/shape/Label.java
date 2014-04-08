@@ -8,6 +8,7 @@ import java.util.ArrayList;
 
 import javax.swing.UIManager;
 
+import spiderdrawer.shape.containers.SingleContainer;
 import spiderdrawer.shape.interfaces.Deletable;
 import spiderdrawer.shape.interfaces.Drawable;
 import spiderdrawer.shape.interfaces.Movable;
@@ -21,8 +22,8 @@ public class Label implements Drawable, Movable, Deletable {
 	int width;
 	int height;
 	private ArrayList<Shape> shapeList;
-	Circle circle;
-	Box box;
+	SingleContainer<Circle, Label> circle;
+	SingleContainer<Box, Label> box;
 	ArrayList<Label> sameLabels;
 	
 	/*
@@ -38,6 +39,19 @@ public class Label implements Drawable, Movable, Deletable {
 		this(letter, new Point(positionX, positionY));
 	}
 	
+	private void createContainers() {
+		circle = new SingleContainer<Circle, Label>(this);
+		box = new SingleContainer<Box, Label>(this);
+	}
+	
+	public static Label create(char letter, Point position, ArrayList<Shape> shapeList) {
+		Label label = new Label(letter, position);
+		label.createContainers();
+		label.shapeList = shapeList;
+		label.recompute(false);
+		return label;
+	}
+	
 	private void setHeightAndWidth() {
 		Font font = new Font(UIManager.getDefaults().getFont("TabbedPane.font").getFontName(), Font.PLAIN, FONT_SIZE);
 		Canvas c = new Canvas();
@@ -48,26 +62,10 @@ public class Label implements Drawable, Movable, Deletable {
 	@Override
 	public void move(Point from, Point to) {
 		center.move(from, to);
-		if (circle != null && this.distance(circle) > LABEL_CIRCLE_DIST) {
-			setCircle(null);
+		if (circle.get() != null && this.distance(circle.get()) > LABEL_CIRCLE_DIST) {
+			circle.set(null, null);
 		}
 	}
-	
-	protected void setBox(Box box) {	
-		Box oldBox = this.box;
-		this.box = box;
-		if (oldBox != null) {
-			oldBox.removeLabel(this);
-		}
-		if (box != null && !box.containsLabel(this)) {
-			box.addLabel(this);
-		}
-	}
-	
-	protected Box getBox() {
-		return box;
-	}
-	
 	
 	public Point getCenter() {
 		return center;
@@ -79,25 +77,6 @@ public class Label implements Drawable, Movable, Deletable {
 	
 	public String asString() {
 		return letter + "," + center.x + "," + center.y;
-	}
-	
-	protected void setCircle(Circle circle) {	
-		Circle oldCircle = this.circle;
-		this.circle = circle;
-		if (oldCircle != null) {
-			oldCircle.setLabel(null);
-		}
-		if (circle != null && !this.equals(circle.getLabel())) {
-			circle.setLabel(this);
-		}
-	}
-	
-	protected boolean hasCircle() {
-		return circle != null;
-	}
-	
-	protected Circle getCircle() {
-		return circle;
 	}
 	
 	public double boundaryDistance(Point p) {
@@ -133,32 +112,11 @@ public class Label implements Drawable, Movable, Deletable {
 		return circleList.toArray(new Circle[0]);
  	}
 	
-	private Box[] boxArray(Shape[] shapes) {
-		ArrayList<Box> boxList = new ArrayList<Box>();
-		for (int i = 0; i < shapes.length; i++) {
-			if (shapes[i] instanceof Box) {
-				boxList.add((Box) shapes[i]);
-			}
-		}
-		return boxList.toArray(new Box[0]);
- 	}
-	
-	private Label[] labelArray(Shape[] shapes) {
-		ArrayList<Label> labelList = new ArrayList<Label>();
-		for (int i = 0; i < shapes.length; i++) {
-			if (shapes[i] instanceof Label) {
-				labelList.add((Label) shapes[i]);
-			}
-		}
-		return labelList.toArray(new Label[0]);
- 	}
-	
 	@Override
 	public void recompute(boolean moving) {
 		if (shapeList == null)
 			return;
-		Shape[] shapes = shapeList.toArray(new Shape[0]);
-		Circle[] circles = circleArray(shapes);
+		Circle[] circles = Arrays.circleArray(shapeList);
 		int circlePos = -1;
 		double lowestDist = Double.MAX_VALUE;
 		for (int i = 0; i < circles.length; i++) {
@@ -168,14 +126,14 @@ public class Label implements Drawable, Movable, Deletable {
 				circlePos = i;
 			}
 		}
-		if ((circle == null || Math.abs(lowestDist) <  Math.abs(circle.signedDistance(this))) && lowestDist <= LABEL_CIRCLE_DIST && circlePos != -1) {
-			this.setCircle(circles[circlePos]);	
+		if ((circle.get() == null || Math.abs(lowestDist) <  Math.abs(circle.get().signedDistance(this))) && lowestDist <= LABEL_CIRCLE_DIST && circlePos != -1) {
+			circle.set(circles[circlePos], circles[circlePos].label);	
 			
 		}
-		computeBoxes(boxArray(shapes));
-		computeLabels(labelArray(shapes));
-		if (circle != null && !moving)
-			snapToCircle(circle);
+		computeBoxes(Arrays.boxArray(shapeList));
+		computeLabels(Arrays.labelArray(shapeList));
+		if (circle.get() != null && !moving)
+			snapToCircle(circle.get());
 	}
 	
 	public void computeBoxes(Box[] boxes) {
@@ -188,7 +146,7 @@ public class Label implements Drawable, Movable, Deletable {
 		}
 		
 		if (boxPos != -1 && !boxes[boxPos].equals(box)) {
-			this.setBox(boxes[boxPos]);
+			box.set(boxes[boxPos], boxes[boxPos].labels);
 		}
 	}
 	
@@ -229,16 +187,16 @@ public class Label implements Drawable, Movable, Deletable {
 	public void computeLabels(Label[] labels) { //Can be made easier by using the entire drawing area as a single box.
 		if (sameLabels != null)
 			removeAllSameLabels();
-		if (box == null) {
+		if (box.get() == null) {
 			for (int i = 0; i < labels.length; i++) {
-				if (!labels[i].equals(this) && labels[i].box == null && labels[i].letter == letter) {
+				if (!labels[i].equals(this) && labels[i].box.get() == null && labels[i].letter == letter) {
 					addSameLabel(labels[i]);
 				}
 			}
 		} else {
-			for (int i = 0; i < box.labels.size(); i++) {
-				if (!box.labels.get(i).equals(this) && box.labels.get(i).letter == letter) {
-					addSameLabel(box.labels.get(i));
+			for (int i = 0; i < box.get().labels.size(); i++) {
+				if (!box.get().labels.get(i).equals(this) && box.get().labels.get(i).letter == letter) {
+					addSameLabel(box.get().labels.get(i));
 				}		
 			}
 		}
@@ -264,17 +222,10 @@ public class Label implements Drawable, Movable, Deletable {
 		this.center.y = (int) (t*(center.y-circle.center.y) + circle.center.y + 0.5);
 	}
 	
-	public static Label create(char letter, Point position, ArrayList<Shape> shapeList) {
-		Label label = new Label(letter, position);
-		label.shapeList = shapeList;
-		label.recompute(false);
-		return label;
-	}
-	
 	@Override
 	public void draw(Graphics2D g2) {
 		char[] array = {letter};
-		if (circle == null || hasSameLabel()) {
+		if (circle.get() == null || hasSameLabel()) {
 			g2.setColor(Color.RED);
 		} else {
 			g2.setColor(Color.BLACK);
@@ -293,8 +244,8 @@ public class Label implements Drawable, Movable, Deletable {
 
 	@Override
 	public void remove() {
-		this.setCircle(null);
-		this.setBox(null);
+		circle.set(null, null);
+		box.set(null, null);
 		removeAllSameLabels();
 	}
 }
