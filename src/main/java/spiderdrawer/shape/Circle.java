@@ -210,7 +210,7 @@ public class Circle implements Drawable, Movable, Deletable {
 				labelPos = i;
 			}
 		}
-		if ((label.get() == null || lowestDist < label.get().distance(this)) && lowestDist <= LABEL_CIRCLE_DIST && labelPos != -1) {
+		if (label.get() == null && lowestDist <= LABEL_CIRCLE_DIST && labelPos != -1) {
 			label.set(labels[labelPos], labels[labelPos].circle);
 			moveLabel = false;
 		}

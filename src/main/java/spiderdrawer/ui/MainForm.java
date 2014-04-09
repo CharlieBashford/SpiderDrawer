@@ -269,15 +269,6 @@ public class MainForm extends JFrame {
         });
         testMenu.add(ocrMenuItem);
         
-        JMenuItem checkLabelMenuItem = new JMenuItem();
-        checkLabelMenuItem.setText("Check Label");
-        checkLabelMenuItem.addActionListener(new ActionListener(){
-			public void actionPerformed(ActionEvent e) {
-				drawingPanel.checkLabel();					
-			}
-        });
-        testMenu.add(checkLabelMenuItem);
-        
         final JMenuItem recognitionMenuItem = new JMenuItem();
         if (drawingPanel.isRecognition())
         	recognitionMenuItem.setText("Recognition Off");

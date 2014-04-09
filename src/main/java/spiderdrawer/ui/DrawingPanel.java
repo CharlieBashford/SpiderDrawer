@@ -30,6 +30,9 @@ import net.sourceforge.tess4j.TessAPI1;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
 import net.sourceforge.tess4j.TessAPI.TessPageSegMode;
+import spiderdrawer.recognizer.RataRecognizer;
+import spiderdrawer.recognizer.TessRecognizer;
+import spiderdrawer.shape.Arrays;
 import spiderdrawer.shape.Box;
 import spiderdrawer.shape.Circle;
 import spiderdrawer.shape.Connective;
@@ -71,7 +74,8 @@ public class DrawingPanel extends JPanel {
     private boolean recognition;
     private boolean shadingRecognition;
     private boolean connectiveRecognition;
-    private WekaClassifier classifier = null;
+    private RataRecognizer rataRecognizer;
+    private TessRecognizer tessRecognizer;
     private Movable toMove;
     private Point from = null;
     private Box drawingBox;
@@ -82,20 +86,8 @@ public class DrawingPanel extends JPanel {
      */
     public DrawingPanel() {
         initComponents();
-        InputStream stream = null;
-        try {
-        	stream = new FileInputStream("lib/test10.model");
-			classifier = new WekaClassifier(stream);
-		} catch (FileNotFoundException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} catch (ClassNotFoundException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
+        rataRecognizer = new RataRecognizer("lib/test10.model");
+        tessRecognizer = new TessRecognizer();
         drawingBox = Box.create(0, 0, getWidth(), getHeight(), shapeList);
         shapeList.add(drawingBox);
         recognition = true;
@@ -175,53 +167,27 @@ public class DrawingPanel extends JPanel {
 			                    }
 			                    
 			                    if (recognition && initial != null && initial.equals(currentFreeform)) {
-			                    	if (!currentFreeform.getOverlappingFreeforms(extractFreeforms()).isEmpty()) {
-			                    		checkLabel();
+			                    	if (!currentFreeform.getOverlappingFreeforms(Arrays.freeformList(shapeList)).isEmpty()) {
+			                    		checkText(false);
 			                    	} else {
-				                    	Trace trace = new Trace();
-				                    	Ink ink = new Ink();
-				                    	ArrayList<Point> points = currentFreeform.getPoints();
-				                    	trace.setAssociatedContext(ink.getCurrentContext());
-				                		
-				            			Collection<InkElement> definitions = ink.getDefinitions().getChildrenList();
-				            			for(InkElement elem : definitions)
-				            			{
-				            				if(elem instanceof com.hp.hpl.inkml.Brush && trace.getBrushRef().isEmpty())
-				            					trace.setAttribute("brushRef", "#"+ ((Brush)elem).getId());
-				            				
-				            				if(elem instanceof com.hp.hpl.inkml.Context && trace.getContextRef().isEmpty())
-				            					trace.setAttribute("contextRef", "#"+ ((com.hp.hpl.inkml.Context)elem).getId());
-				            			} 
-				            			trace.setTraceData("X", new float[] { points.get(0).getX() });
-				                    	trace.setTraceData("Y", new float[] { points.get(0).getY() });
-				                    	trace.setTraceData("T", new float[] { points.get(0).getTime() - points.get(0).getTime() });
-				                    	for (int i = 1; i < points.size(); i++) {
-				                    		
-				                    		trace.addToTraceData("X", new float[] { points.get(i).getX() });
-				                    		trace.addToTraceData("Y", new float[] { points.get(i).getY() });
-				                    		trace.addToTraceData("T", new float[] { points.get(i).getTime() - points.get(0).getTime() });
-				                    	}
-				                    	Stroke stroke = traceToStroke(trace);
-				                    	System.out.println(classifier.AllClass());
-				                    	System.out.print("Result:");
-				                    	String resultingClass = classifier.classifierClassify(stroke);
-				                    	System.out.println(resultingClass);
+				                    	String resultingClass = rataRecognizer.classify(currentFreeform);
+				                    	System.out.println("Result:" + resultingClass);
 				                    	shapeList.remove(currentFreeform);
 				                    	switch(resultingClass) {
-				                    		case "Text": checkLabel(); break;
+				                    		case "Text": checkText(false); break;
 				                    		case "Box": shapeList.add(Box.create(currentFreeform, shapeList)); break;
 				                    		case "Line": shapeList.add(Line.create(currentFreeform, shapeList)); break;
 				                    		case "Circle": shapeList.add(Circle.create(currentFreeform, shapeList)); break;
 				                    		case "Dot": shapeList.add(Point.create(currentFreeform, shapeList)); break;
 				                    		case "Shading": shapeList.add(Shading.create(currentFreeform, shapeList.toArray(new Shape[0]))); break;
-				                    		case "Connective": checkConnective(); break;
+				                    		case "Connective": checkText(true); break;
 				                    	}
-				                    	repaint();
+				                    	
 			                    	}
-			                    	
 			                    } else if (connectiveRecognition && initial != null && initial.equals(currentFreeform)) {
-			                    	checkConnective();
+			                    	checkText(true);
 			                    }
+			                    repaint();
 			                }
 			            };
 			
@@ -272,89 +238,6 @@ public class DrawingPanel extends JPanel {
             }
         });
     }
-    
-	private int pixelsToHimetric(double input)
-    {
-        // convert the trace data to the device ("dev") unit which is -
-        // HIMETRIC unit for TabletPC SDK and hence for the ISF format.
-        // 1 HIMETRIC = 0.01 mm = 25.4/0.01 inches.
-        // Finaly the data is divided by 96 PPI which is the typical screen resolution
-
-        return (int) (input * (25.4 / 0.01 / ((float)127f)));
-    }
-
-    
-	private int millisecondsToPacketTime(double input)
-	{
-		return (int) Converters.millisToWinTime(input);
-	}
-    
-    @SuppressWarnings({ "rawtypes", "unchecked" })
-	private Stroke traceToStroke(final Trace t)
-	{
-		LinkedHashMap<String, ArrayList> traceData = t.getTraceData();
-		if(traceData!=null)
-		{
-			ArrayList<Float> xs = traceData.get("X");
-			ArrayList<Float> ys = traceData.get("Y");
-			ArrayList<Float> ts = traceData.get("T");
-	
-			Stroke stroke = new Stroke(new com.uoa.cs.ink.Ink());
-			int numPoints = xs.size();
-			
-			int initTime = -1;
-			int lastTime = -1;
-			for (int i = 0; i < numPoints; i++)
-			{
-				if(i==0)
-					initTime = millisecondsToPacketTime(ts.get(i)); 
-				
-				int currentT = i==0 ? 0 : millisecondsToPacketTime(ts.get(i)) - initTime;
-				
-				if(i==numPoints-1)
-					lastTime = currentT;
-				
-				int currentX = pixelsToHimetric(xs.get(i));
-				int currentY = pixelsToHimetric(ys.get(i));
-				
-				
-				Packet p = new Packet();
-				p.set(PacketProperty.X, currentX);
-				p.set(PacketProperty.Y, currentY);
-				p.set(PacketProperty.TimerTick, currentT);
-				stroke.addPacket(p);	
-			}
-			
-			stroke.setExtendedProperty(MyLibrary.TIMEGUID, lastTime);
-			return stroke;
-		}
-		else
-		{
-			return null;
-		}
-	}
-    
-	/**
-	 * Return a list with all the classes for this classifier
-	 * @return All clases for this classifier
-	 */
-	public List<String> getClasses()
-	{
-		if(loaded())
-			return classifier.AllClass();
-		else
-			return null;
-	}
-	
-	public void load(final InputStream stream) throws Exception
-	{
-		classifier = new WekaClassifier(stream);
-	}
-	
-	public boolean loaded()
-	{
-		return classifier!=null;
-	}
     
     public void addCircle() {
     	Random generator = new Random();
@@ -523,47 +406,30 @@ public class DrawingPanel extends JPanel {
     	return true;
     }
     
-    public void checkLabel() {
-    	ArrayList<Freeform> freeformList = extractFreeforms();
-    	Set<Freeform> intersectingFreeforms = recursiveOverlappingFreeforms(currentFreeform, freeformList, new HashSet<Freeform>());
-    	convertToLabel(intersectingFreeforms.toArray(new Freeform[0]));
+    private Freeform[] intersectingFreeforms(Freeform f) {
+    	Set<Freeform> intersectingFreeforms = f.overlappingFreeforms(Arrays.freeformList(shapeList), new HashSet<Freeform>());
+    	return intersectingFreeforms.toArray(new Freeform[0]);
     }
     
-    public void checkConnective() {
-    	ArrayList<Freeform> freeformList = extractFreeforms();
-    	Set<Freeform> intersectingFreeforms = recursiveOverlappingFreeforms(currentFreeform, freeformList, new HashSet<Freeform>());
-    	convertToConnective(intersectingFreeforms.toArray(new Freeform[0]));
+    private void checkText(boolean connective) {
+    	Freeform[] freeforms = intersectingFreeforms(currentFreeform);
+		Rectangle rect = surroundingRectangle(freeforms);
+		Character character = (connective)? tessRecognizer.classifyConnective(freeforms) : tessRecognizer.classifyText(freeforms);
+		if (character != null) {
+			Point center = new Point((int)rect.getCenterX(), (int)rect.getCenterY());
+			Shape shape;
+			if (Character.isAlphabetic((int) character))
+				shape = Label.create(character, center, shapeList);
+			else 
+				shape = Connective.create(Logical.create(character), center, shapeList);
+			shapeList.add(shape);
+			for (int i = 0; i < freeforms.length; i++)
+				shapeList.remove(freeforms[i]);
+		}
     }
     
-    private Set<Freeform> recursiveOverlappingFreeforms(Freeform freeform, ArrayList<Freeform> freeformList, Set<Freeform> currentFreeforms) {
-    	Set<Freeform> intersectingFreeforms = new HashSet<Freeform>();
-    	intersectingFreeforms.add(freeform);
-    	currentFreeforms.add(freeform);
-    	ArrayList<Freeform> currentOverlappingFreeforms = freeform.getOverlappingFreeforms(extractFreeforms());
-    	for (int i = 0; i < currentOverlappingFreeforms.size(); i++) {
-    		if (!intersectingFreeforms.contains(currentOverlappingFreeforms.get(i)) && !currentFreeforms.contains(currentOverlappingFreeforms.get(i))) {
-    			intersectingFreeforms.addAll(recursiveOverlappingFreeforms(currentOverlappingFreeforms.get(i), freeformList, currentFreeforms));
-    		}
-    	}
-    	return intersectingFreeforms;
-    }
-    
-    private ArrayList<Freeform> extractFreeforms() {
-  
-    	ArrayList<Freeform> freeforms = new ArrayList<Freeform>();
-    	for (int i = 0; i < shapeList.size(); i++) {
-    		if (shapeList.get(i) instanceof Freeform) {
-    			freeforms.add((Freeform) shapeList.get(i));
-    		}
-    	}
-    	return freeforms;
-    }
-    
-    /* TODO: Use rectangle instead? 
-     */
-    private void convertToLabel(Freeform[] freeforms) {
-    	System.out.println(freeforms.length);
-    	int minX = Integer.MAX_VALUE;
+    public static Rectangle surroundingRectangle(Freeform[] freeforms) {
+		int minX = Integer.MAX_VALUE;
     	int minY = Integer.MAX_VALUE;
     	int maxX = Integer.MIN_VALUE;
     	int maxY = Integer.MIN_VALUE;
@@ -584,92 +450,9 @@ public class DrawingPanel extends JPanel {
     		if (currentMaxY > maxY) {
     			maxY = currentMaxY; 
     		}
-    	}    	
-    	Tesseract instance = Tesseract.getInstance();
-    	instance.setDatapath(".");
-    	instance.setTessVariable("tessedit_char_whitelist", "ABCDEFGHIJKLMNOPQRSTUVWXYZ↔→∨∧¬");
-    	instance.setPageSegMode(TessPageSegMode.PSM_SINGLE_CHAR);
-    	instance.setLanguage("eng+con");
-    	try {
-           String result = instance.doOCR(createImage(freeforms));
-            if (result.length() > 0) {
-            	char character = '\0';
-            	for(int i = 0; i < result.length(); i++) {
-                    if(!Character.isWhitespace(result.charAt(i))) {
-                    	character = result.charAt(i);
-                    }
-                }
-            	System.out.println("\"" +result + "\"");
-            	for (int i = 0; i < freeforms.length; i++) 
-            		shapeList.remove(freeforms[i]);
-            	if (character != '\0') {
-            		if ("ABCDEFGHIJKLMNOPQRSTUVWXYZ".indexOf(character) != -1)
-            			shapeList.add(Label.create(character, new Point((int)(maxX+minX)/2, (int)(maxY+minY)/2), shapeList));
-            		else
-            			shapeList.add(Connective.create(Logical.create(character), (int)(maxX+minX)/2, (int)(maxY+minY)/2, shapeList));
-            	}
-            }
-            repaint();
-        } catch (TesseractException e) {
-            System.err.println(e.getMessage());
-        }
-    }
-    
-    private void convertToConnective(Freeform[] freeforms) {
-    	System.out.println(freeforms.length);
-    	int minX = Integer.MAX_VALUE;
-    	int minY = Integer.MAX_VALUE;
-    	int maxX = Integer.MIN_VALUE;
-    	int maxY = Integer.MIN_VALUE;
-    	for (int i = 0; i < freeforms.length; i++) {
-    		int currentMinX = freeforms[i].minX();
-    		if (currentMinX < minX) {
-    			minX = currentMinX; 
-    		}
-    		int currentMinY = freeforms[i].minY();
-    		if (currentMinY < minY) {
-    			minY = currentMinY; 
-    		}
-    		int currentMaxX = freeforms[i].maxX();
-    		if (currentMaxX > maxX) {
-    			maxX = currentMaxX; 
-    		}
-    		int currentMaxY = freeforms[i].maxY();
-    		if (currentMaxY > maxY) {
-    			maxY = currentMaxY; 
-    		}
-    	}    	
-    	Tesseract instance = Tesseract.getInstance();
-    	instance.setDatapath(".");
-    	instance.setTessVariable("tessedit_char_whitelist", "↔→∨∧¬");
-    	instance.setPageSegMode(TessPageSegMode.PSM_SINGLE_CHAR);
-    	instance.setLanguage("con");
-    	try {
-           String result = instance.doOCR(createImage(freeforms));
-           System.out.println("result length:" + result.length());
-           char character;
-            if (result.length() > 0) {
-            	character = '\0';
-            	for(int i = 0; i < result.length(); i++) {
-                    if(!Character.isWhitespace(result.charAt(i))) {
-                    	character = result.charAt(i);
-                    }
-                }
-            	System.out.println("\"" +result + "\"");
-            	
-            } else {
-            	character = '\u00AC';
-            }
-            for (int i = 0; i < freeforms.length; i++) 
-        		shapeList.remove(freeforms[i]);
-        	if (character != '\0') {
-        		shapeList.add(Connective.create(Logical.create(character), (int)(maxX+minX)/2, (int)(maxY+minY)/2, shapeList));
-        	}
-            repaint();
-        } catch (TesseractException e) {
-            System.err.println(e.getMessage());
-        }
-    }
+    	}    
+    	return new Rectangle(minX, minY, maxX - minX, maxY - minY);
+	}
     
     @Override
     public void paintComponent(Graphics g) {
@@ -696,17 +479,7 @@ public class DrawingPanel extends JPanel {
     }
 
     private void initComponents() {
-        //setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
     	setBackground(Color.WHITE);
-
-    }
-    
-    public BufferedImage createImage(Freeform[] freeforms) {
-        BufferedImage bufferedImage = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_RGB);
-        Graphics2D g = bufferedImage.createGraphics();
-        for (int i = 0; i < freeforms.length; i++)
-        	freeforms[i].draw(g);
-        return bufferedImage;
     }
     
     public BufferedImage createImage() {

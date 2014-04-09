@@ -2,6 +2,8 @@ package spiderdrawer.shape;
 
 import java.awt.Graphics2D;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 import spiderdrawer.shape.interfaces.Deletable;
 import spiderdrawer.shape.interfaces.Drawable;
@@ -145,6 +147,19 @@ public class Freeform implements Drawable, Deletable {
 		}
 		return overlaps;
 	}
+	
+    public Set<Freeform> overlappingFreeforms(ArrayList<Freeform> freeformList, Set<Freeform> currentFreeforms) {
+    	Set<Freeform> intersectingFreeforms = new HashSet<Freeform>();
+    	intersectingFreeforms.add(this);
+    	currentFreeforms.add(this);
+    	ArrayList<Freeform> currentOverlappingFreeforms = this.getOverlappingFreeforms(freeformList);
+    	for (int i = 0; i < currentOverlappingFreeforms.size(); i++) {
+    		if (!intersectingFreeforms.contains(currentOverlappingFreeforms.get(i)) && !currentFreeforms.contains(currentOverlappingFreeforms.get(i))) {
+    			intersectingFreeforms.addAll(currentOverlappingFreeforms.get(i).overlappingFreeforms(freeformList, currentFreeforms));
+    		}
+    	}
+    	return intersectingFreeforms;
+    }
 
 	@Override
 	public void remove() {

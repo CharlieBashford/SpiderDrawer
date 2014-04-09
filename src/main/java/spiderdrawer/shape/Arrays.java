@@ -36,6 +36,16 @@ public class Arrays {
 		return connectiveList.toArray(new Connective[0]);
  	}
 	
+	 public static ArrayList<Freeform> freeformList(ArrayList<Shape> shapeList) {
+	    	ArrayList<Freeform> freeforms = new ArrayList<Freeform>();
+	    	for (int i = 0; i < shapeList.size(); i++) {
+	    		if (shapeList.get(i) instanceof Freeform) {
+	    			freeforms.add((Freeform) shapeList.get(i));
+	    		}
+	    	}
+	    	return freeforms;
+	    }
+	
 	public static Label[] labelArray(ArrayList<Shape> shapeList) {
 		ArrayList<Label> labelList = new ArrayList<Label>();
 		for (int i = 0; i < shapeList.size(); i++) {

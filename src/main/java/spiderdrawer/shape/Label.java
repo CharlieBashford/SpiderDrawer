@@ -98,28 +98,13 @@ public class Label implements Drawable, Movable, Deletable {
 		return ((Math.abs(p.getX() - center.getX()) < (double)width/2) && (Math.abs(p.getY() - center.getY()) < (double)height/2));
 	}
 	
-	private Circle[] circleArray(Shape[] shapes) {
-		ArrayList<Circle> circleList = new ArrayList<Circle>();
-		Circle circle;
-		for (int i = 0; i < shapes.length; i++) {
-			if (shapes[i] instanceof Circle) {
-				circle = (Circle) shapes[i];
-				if (!circle.hasLabel()) {
-					circleList.add(circle);
-				}
-			}
-		}
-		return circleList.toArray(new Circle[0]);
- 	}
 	
-	@Override
-	public void recompute(boolean moving) {
-		if (shapeList == null)
-			return;
-		Circle[] circles = Arrays.circleArray(shapeList);
+	private void computeCircles(Circle[] circles) {
 		int circlePos = -1;
 		double lowestDist = Double.MAX_VALUE;
 		for (int i = 0; i < circles.length; i++) {
+			if (circles[i].hasLabel())
+				continue;
 			double dist = this.signedDistance(circles[i]);
 			if (dist <= LABEL_CIRCLE_DIST && Math.abs(dist) < Math.abs(lowestDist)) {
 				lowestDist = dist;
@@ -130,6 +115,13 @@ public class Label implements Drawable, Movable, Deletable {
 			circle.set(circles[circlePos], circles[circlePos].label);	
 			
 		}
+	}
+	
+	@Override
+	public void recompute(boolean moving) {
+		if (shapeList == null)
+			return;
+		computeCircles(Arrays.circleArray(shapeList));
 		computeBoxes(Arrays.boxArray(shapeList));
 		computeLabels(Arrays.labelArray(shapeList));
 		if (circle.get() != null && !moving)

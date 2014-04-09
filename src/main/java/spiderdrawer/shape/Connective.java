@@ -39,12 +39,16 @@ public class Connective implements Drawable, Movable, Deletable {
 		outerBox = new SingleContainer<Box, Connective>(this);
 	}
 	
-	public static Connective create(Logical logical, int x, int y, ArrayList<Shape> shapeList) {
-		Connective connective = new Connective(logical, new Point(x,y));
+	public static Connective create(Logical logical, Point center, ArrayList<Shape> shapeList) {
+		Connective connective = new Connective(logical, center);
 		connective.createContainers();
 		connective.shapeList = shapeList;
 		connective.recompute(false);
 		return connective;
+	}
+	
+	public static Connective create(Logical logical, int x, int y, ArrayList<Shape> shapeList) {
+		return create(logical, new Point(x, y), shapeList);
 	}
 	
 	private char asChar() {
