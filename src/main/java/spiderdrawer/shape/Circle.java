@@ -141,6 +141,11 @@ public class Circle implements Drawable, Movable, Deletable {
 	}
 	
 	@Override
+	public boolean isValid() {
+		return hasLabel() && overlapBoxes.isEmpty() && innerBoxes.isEmpty();
+	}
+	
+	@Override
 	public void draw(Graphics2D g2) {
 		if (shadings != null) {
 			for (int i = 0; i < shadings.size(); i++) {
@@ -163,7 +168,7 @@ public class Circle implements Drawable, Movable, Deletable {
 				}
 			}
 		}
-		if (!hasLabel() || !overlapBoxes.isEmpty() || !innerBoxes.isEmpty()) {
+		if (!isValid()) {
 			g2.setColor(Color.RED);
 		} else {
 			g2.setColor(Color.BLACK);

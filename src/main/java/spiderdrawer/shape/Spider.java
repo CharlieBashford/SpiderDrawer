@@ -23,6 +23,11 @@ public class Spider implements Movable, Drawable {
 	protected boolean isSinglePoint() { //Assume either lines or point set.
 		return (point != null);
 	}
+	
+	@Override
+	public boolean isValid() {
+		return true;
+	}
 
 	@Override
 	public void draw(Graphics2D g2) {

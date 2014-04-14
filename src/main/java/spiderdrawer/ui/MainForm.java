@@ -52,6 +52,10 @@ public class MainForm extends JFrame {
     	drawingPanel.repaint();
     }
     
+    private void convertMenuItemClicked() {
+    	System.out.println("Convert menu item clicked");
+    }
+    
     private void loadMenuItemClicked() {
     	String filename = FileChooserForm.showDialog(this, new File(".").getAbsolutePath());
     	if (filename == null || filename.equals("")) {
@@ -199,6 +203,15 @@ public class MainForm extends JFrame {
 			}
         });
         optionsMenu.add(clearMenuItem);
+        
+        JMenuItem convertMenuItem = new JMenuItem();
+        convertMenuItem.setText("Convert to Text Rep");
+        convertMenuItem.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent e) {
+				convertMenuItemClicked();				
+			}
+        });
+        optionsMenu.add(convertMenuItem);
         
         
         /*Test menu starts */

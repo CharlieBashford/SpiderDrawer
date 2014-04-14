@@ -143,6 +143,7 @@ public class Box implements Drawable, Movable, Deletable {
 		return innerConnectives.size() == 1;
 	}
 	
+	@Override
 	public boolean isValid() {
 		return completeConnectives() && !isOverlapping() && !(containsSpider() && !innerBoxes.isEmpty()) && outerCircles.isEmpty() && (singleInnerConnective() || innerConnectives.isEmpty());
 	}

@@ -214,10 +214,19 @@ public class Label implements Drawable, Movable, Deletable {
 		this.center.y = (int) (t*(center.y-circle.center.y) + circle.center.y + 0.5);
 	}
 	
+	protected boolean hasCircle() {
+		return circle.get() != null;
+	}
+	
+	@Override
+	public boolean isValid() {
+		return hasCircle() && !hasSameLabel();
+	}
+	
 	@Override
 	public void draw(Graphics2D g2) {
 		char[] array = {letter};
-		if (circle.get() == null || hasSameLabel()) {
+		if (!isValid()) {
 			g2.setColor(Color.RED);
 		} else {
 			g2.setColor(Color.BLACK);

@@ -284,8 +284,13 @@ public class Line implements Drawable, Movable, Deletable {
 	}
 	
 	@Override
+	public boolean isValid() {
+		return hasBothEnds() && equalPointCircles() && !overlapBoxes.isEmpty();
+	}
+	
+	@Override
 	public void draw(Graphics2D g2) {
-		if (!this.hasBothEnds() || equalPointCircles() || (overlapBoxes != null && overlapBoxes.size() > 0)) {
+		if (!isValid()) {
 			g2.setColor(Color.RED);
 		} else {
 			g2.setColor(Color.BLACK);

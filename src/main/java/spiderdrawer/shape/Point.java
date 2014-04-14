@@ -130,8 +130,13 @@ public class Point implements Drawable, Movable, Deletable {
 	}
 	
 	@Override
+	public boolean isValid() {
+		return !isPointSameCircle();
+	}
+	
+	@Override
 	public void draw(Graphics2D g2) {
-		if (isPointSameCircle())
+		if (!isValid())
 			g2.setColor(Color.RED);
 		g2.fillOval(x-2, y-2, 4, 4);
 		g2.drawOval(x-2, y-2, 4, 4);

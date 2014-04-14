@@ -124,6 +124,11 @@ public class Freeform implements Drawable, Deletable {
 		return result;
 	}
 	
+	@Override
+	public boolean isValid() {
+		return true;
+	}
+	
 	public void draw(Graphics2D g2) {
 		for (int i = 0; i < points.size() - 1; i++) {
             Point p1 = points.get(i);

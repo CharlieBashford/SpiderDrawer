@@ -76,12 +76,17 @@ public class Connective implements Drawable, Movable, Deletable {
 		}
 		return (leftBox.get() != null) && (rightBox.get() != null);
 	}
+	
+	@Override
+	public boolean isValid() {
+		return isFullyConnected();
+	}
 
 	@Override
 	public void draw(Graphics2D g2) {
 		char[] array = new char[1];
 		array[0] = this.asChar();
-		if (!isFullyConnected()) {
+		if (!isValid()) {
 			g2.setColor(Color.RED);
 		} else {
 			g2.setColor(Color.BLACK);

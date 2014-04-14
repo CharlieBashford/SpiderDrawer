@@ -168,24 +168,24 @@ public class DrawingPanel extends JPanel {
 			                    
 			                    if (recognition && initial != null && initial.equals(currentFreeform)) {
 			                    	if (!currentFreeform.getOverlappingFreeforms(Arrays.freeformList(shapeList)).isEmpty()) {
-			                    		checkText(false);
+			                    		checkText(true, true);
 			                    	} else {
 				                    	String resultingClass = rataRecognizer.classify(currentFreeform);
 				                    	System.out.println("Result:" + resultingClass);
 				                    	shapeList.remove(currentFreeform);
 				                    	switch(resultingClass) {
-				                    		case "Text": checkText(false); break;
+				                    		case "Text": checkText(false, true); break;
 				                    		case "Box": shapeList.add(Box.create(currentFreeform, shapeList)); break;
 				                    		case "Line": shapeList.add(Line.create(currentFreeform, shapeList)); break;
 				                    		case "Circle": shapeList.add(Circle.create(currentFreeform, shapeList)); break;
 				                    		case "Dot": shapeList.add(Point.create(currentFreeform, shapeList)); break;
 				                    		case "Shading": shapeList.add(Shading.create(currentFreeform, shapeList.toArray(new Shape[0]))); break;
-				                    		case "Connective": checkText(true); break;
+				                    		case "Connective": checkText(true, false); break;
 				                    	}
 				                    	
 			                    	}
 			                    } else if (connectiveRecognition && initial != null && initial.equals(currentFreeform)) {
-			                    	checkText(true);
+			                    	checkText(true, true);
 			                    }
 			                    repaint();
 			                }
@@ -411,10 +411,10 @@ public class DrawingPanel extends JPanel {
     	return intersectingFreeforms.toArray(new Freeform[0]);
     }
     
-    private void checkText(boolean connective) {
+    private void checkText(boolean connective, boolean letter) {
     	Freeform[] freeforms = intersectingFreeforms(currentFreeform);
 		Rectangle rect = surroundingRectangle(freeforms);
-		Character character = (connective)? tessRecognizer.classifyConnective(freeforms) : tessRecognizer.classifyText(freeforms);
+		Character character = (connective)? ((letter)? tessRecognizer.classifyText(freeforms) : tessRecognizer.classifyConnective(freeforms)) : tessRecognizer.classifyLetter(freeforms);
 		if (character != null) {
 			Point center = new Point((int)rect.getCenterX(), (int)rect.getCenterY());
 			Shape shape;
