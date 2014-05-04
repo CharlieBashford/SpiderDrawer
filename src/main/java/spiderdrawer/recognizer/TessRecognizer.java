@@ -22,11 +22,15 @@ public class TessRecognizer {
 	}
 	
 	public Character classifyText(Freeform[] freeforms) {
-    	return convertToChar(freeforms, false);
+    	return convertToChar(freeforms, true, true);
     }
 	
 	public Character classifyConnective(Freeform[] freeforms) {
-    	return convertToChar(freeforms, true);
+    	return convertToChar(freeforms, true, false);
+    }
+	
+	public Character classifyLetter(Freeform[] freeforms) {
+    	return convertToChar(freeforms, false, true);
     }
 	
 	public static Rectangle rectangle(Freeform[] freeforms) {
@@ -45,15 +49,18 @@ public class TessRecognizer {
     	return new Rectangle(0, 0, maxX, maxY);
 	}
 	
-	private Character convertToChar(Freeform[] freeforms, boolean connective) {
+	private Character convertToChar(Freeform[] freeforms, boolean connective, boolean letter) {
     	System.out.println(freeforms.length);
     	Rectangle rect = rectangle(freeforms);
-    	if (connective) {
-    		instance.setTessVariable("tessedit_char_whitelist", "↔→∨∧¬");
-    		instance.setLanguage("con");
-    	} else {
+    	if (connective && letter) {
     		instance.setTessVariable("tessedit_char_whitelist", "ABCDEFGHIJKLMNOPQRSTUVWXYZ↔→∨∧¬");
     		instance.setLanguage("eng+con");
+    	} else if (connective) {
+    		instance.setTessVariable("tessedit_char_whitelist", "↔→∨∧¬");
+    		instance.setLanguage("con");
+    	} else { //letter == true
+    		instance.setTessVariable("tessedit_char_whitelist", "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+    		instance.setLanguage("eng");
     	}
     	try {
            String result = instance.doOCR(createImage(freeforms, (int) rect.getWidth(), (int) rect.getHeight()));

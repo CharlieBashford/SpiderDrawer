@@ -4,6 +4,8 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.util.ArrayList;
 
+import spiderdrawer.exception.EmptyContainerException;
+import spiderdrawer.exception.InvalidShapeException;
 import spiderdrawer.shape.containers.MultiContainer;
 import spiderdrawer.shape.containers.SingleContainer;
 import spiderdrawer.shape.interfaces.Deletable;
@@ -17,6 +19,7 @@ public class Box implements Drawable, Movable, Deletable {
 	Point topLeft;
 	int width;
 	int height;
+	char letter = '\0';
 	private ArrayList<Shape> shapeList;
 	MultiContainer<Circle, Box> circles;
 	MultiContainer<Circle, Box> overlapCircles;
@@ -31,6 +34,7 @@ public class Box implements Drawable, Movable, Deletable {
 	MultiContainer<Box, Box> overlapBoxes;
 	MultiContainer<Label, Box> labels;
 	MultiContainer<Point, Box> points;
+	ArrayList<Shape> toMove;
 	ArrayList<Spider> spiders;
 
 
@@ -90,9 +94,13 @@ public class Box implements Drawable, Movable, Deletable {
 		return height;
 	}
 	
-	protected String asString() {
-		return topLeft.x + "," + topLeft.y + "," + width + "," + height;
+	public Connective getConnective() {
+		return connective.get();
 	}
+	
+	/*protected String asString() {
+		return topLeft.x + "," + topLeft.y + "," + width + "," + height;
+	}*/
 	
 	protected double distance(Point p) {
 		if (intersects(p))
@@ -143,6 +151,77 @@ public class Box implements Drawable, Movable, Deletable {
 		return innerConnectives.size() == 1;
 	}
 	
+	public Connective getInnerConnective() {
+		return innerConnectives.get(0);
+	}
+	
+	public String spidersAsString() {
+		letter = 'S';
+		String result = "[";
+		if (spiders != null) {
+			for (int i = 0; i < spiders.size(); i++) {
+				result += "\"" + letter + (i+1) + "\"";	
+				if (i != spiders.size()-1)
+					result += ",";
+			}
+		}
+		return result += "]";
+	}
+	
+	public String habitatsAsString() throws EmptyContainerException, InvalidShapeException {
+		String result = "[";
+		if (spiders != null) {
+			for (int i = 0; i < spiders.size(); i++) {
+				result += spiders.get(i).asString();	
+				if (i != spiders.size()-1)
+					result += ",";
+			}
+		}
+		return result += "]";
+	}
+	
+	public String shadingsAsString() throws EmptyContainerException {
+		String result = "[";
+		ArrayList<Shading> seenShadings = new ArrayList<Shading>();
+		for (int i = 0; i < circles.size(); i++) {
+			Circle circle = circles.get(i);
+			for (int j = 0; j < circle.shadings.size(); j++) {
+				if (!seenShadings.contains(circle.shadings.get(j))) {
+					result += circle.shadings.get(j).asString();
+					seenShadings.add(circle.shadings.get(j));
+				}
+			}
+		}
+		return result + "]";
+	}
+	
+	public String asString() throws EmptyContainerException, InvalidShapeException {
+	    	if (isValid()) {
+	    		if (singleInnerConnective()) {
+	    			Connective connective = getInnerConnective();
+	    			String args;
+	    			if (connective.asString() == "not") {
+	    				args = "arg1 = " + connective.getRightBox().asString() + ", "; 
+	    			} else {
+	    				args = "arg1 = " + connective.getLeftBox().asString() + ", arg2 = " + connective.getRightBox().asString() + ", ";
+	    			}
+	    			return "BinarySD { "
+	    					+ "operator= \"op " + connective.asString() + "\", "
+	    					+ args
+	    					+ "}";
+	    		} else {
+	    			return "PrimarySD { "
+	    					+ "spiders = " + spidersAsString() + ", "
+	    					+ "habitats = " +  habitatsAsString() + ", "
+	    					+ "sh_zones = " + shadingsAsString() + ", "
+	    					//+ "present_zones = " + ? + ", "
+	    					+ "}";
+	    		}
+	    	} else {
+	    		throw new InvalidShapeException("Box");
+	    	}
+	}
+	
 	@Override
 	public boolean isValid() {
 		return completeConnectives() && !isOverlapping() && !(containsSpider() && !innerBoxes.isEmpty()) && outerCircles.isEmpty() && (singleInnerConnective() || innerConnectives.isEmpty());
@@ -161,18 +240,21 @@ public class Box implements Drawable, Movable, Deletable {
 	
 	public void move(Point from, Point to, boolean external) {
 		if (external) {
-			System.out.println("Moving " + this.toString());
 			topLeft.move(from, to);
-			if ((overlapCircles == null || overlapCircles.size() == 0) && (overlapBoxes == null || overlapBoxes.size() == 0) && (overlapLines == null || overlapLines.size() == 0)) {
+			//if ((overlapCircles == null || overlapCircles.size() == 0) && (overlapBoxes == null || overlapBoxes.size() == 0) && (overlapLines == null || overlapLines.size() == 0)) {
 				if (innerBoxes == null || innerBoxes.size() == 0) {
 					if (circles != null) {
 						for (int i = 0; i < circles.size(); i++) {
 							circles.get(i).move(from, to, true);
+							circles.get(i).recompute(false);
 						}
 					}
 					if (spiders != null) {
 						for (int i = 0; i < spiders.size(); i++) {
 							spiders.get(i).move(from, to);
+						}
+						for (int i = 0; i < spiders.size(); i++) {
+							spiders.get(i).recompute(false);
 						}
 					}
 				}
@@ -181,7 +263,7 @@ public class Box implements Drawable, Movable, Deletable {
 						innerConnectives.get(0).move(from, to, true);
 					}
 				}
-			}
+			//}
 			if (connective.get() != null) {
 				if ((leftConnective && this.leftDistance(connective.get()) > CONNECTIVE_BOX_DIST) || (!leftConnective && this.rightDistance(connective.get()) > CONNECTIVE_BOX_DIST)) {
 					connective.set(null, null);
@@ -197,16 +279,39 @@ public class Box implements Drawable, Movable, Deletable {
 		Point topRight = topRight();
 		Point bottomLeft = bottomLeft();
 		Point bottomRight = bottomRight();
+		Line top = new Line(topLeft, topRight);
+		Line left = new Line(topLeft, bottomLeft);
 		Line right = new Line(topRight, bottomRight);
 		Line bottom = new Line(bottomLeft, bottomRight);
-		if (right.distanceAlongLine(from) > 1-DIST_LINE_MOVE_END && bottom.distanceAlongLine(from) > 1-DIST_LINE_MOVE_END) {
+		double distTop = top.distanceAlongLine(from);
+		double distLeft = left.distanceAlongLine(from);
+		double distRight = right.distanceAlongLine(from);
+		double distBottom = bottom.distanceAlongLine(from);
+		double distTopAllowed = Math.min(DIST_LINE_MOVE_END,DIST_LINE_MOVE_END_MIN/top.length());
+		double distRightAllowed = Math.min(DIST_LINE_MOVE_END,DIST_LINE_MOVE_END_MIN/right.length());
+		double distLeftAllowed = Math.min(DIST_LINE_MOVE_END,DIST_LINE_MOVE_END_MIN/left.length());
+		double distBottomAllowed = Math.min(DIST_LINE_MOVE_END,DIST_LINE_MOVE_END_MIN/bottom.length());
+		if (distRight > 1-distRightAllowed && distBottom > 1-distBottomAllowed) { //Bottom right corner
 			width += to.x - from.x;
 			height += to.y - from.y;
+		} else if (distLeft > 1-distLeftAllowed && distBottom < distBottomAllowed) { //Bottom left corner
+			topLeft.x += to.x - from.x;
+			width -= to.x - from.x;
+			height += to.y - from.y;
+		} else if (distLeft < distLeftAllowed && distTop < distTopAllowed) { //Top left corner
+			topLeft.x += to.x - from.x;
+			width -= to.x - from.x;
+			topLeft.y += to.y - from.y;
+			height -= to.y - from.y;
+		} else if (distRight < distRightAllowed && distTop > 1-distTopAllowed) { //Top right corner
+			width += to.x - from.x;
+			topLeft.y += to.y - from.y;
+			height -= to.y - from.y;
 		} else {
 			move(from, to, true);
 		}
 	}
-	
+		
 	private void computeBoxes(Box[] boxes) {
 		innerBoxes.removeAll();
 		outerBoxes.removeAll();
@@ -240,7 +345,7 @@ public class Box implements Drawable, Movable, Deletable {
 		this.circles.removeAll();
 		for (int i = 0; i < circles.length; i++) {
 			if (this.contains(circles[i]) && !this.innerBoxesContains(circles[i])) {
-				this.circles.add(circles[i], circles[i].box);
+				this.circles.add(circles[i], circles[i].boxes);
 			}
 		}
 	}
@@ -261,7 +366,7 @@ public class Box implements Drawable, Movable, Deletable {
 		}
 		for (int i = 0; i < lines.length; i++) {
 			if (this.contains(lines[i])) {
-				this.lines.add(lines[i], lines[i].box);
+				this.lines.add(lines[i], lines[i].boxes);
 			}
 		}
 	}
@@ -273,7 +378,7 @@ public class Box implements Drawable, Movable, Deletable {
 		}
 		for (int i = 0; i < points.length; i++) {
 			if (this.contains(points[i])) {
-				this.points.add(points[i], points[i].box);
+				this.points.add(points[i], points[i].boxes);
 			}
 		}
 	}
@@ -385,18 +490,43 @@ public class Box implements Drawable, Movable, Deletable {
 		computeOverlapCircles(Arrays.circleArray(shapeList));
 		computeOverlapLines(Arrays.lineArray(shapeList));
 		computeOverlapBoxes(Arrays.boxArray(shapeList));
-		computeSpiders();
+		computeSpiders();	
+	}
+	
+	private void checkLetter() {
+		if (letter == '\0') {
+			Box[] boxes = Arrays.boxArray(shapeList);
+			ArrayList<Character> letters = new ArrayList<Character>(); 
+			for (int i = 0; i < boxes.length; i++) {
+				if (boxes[i].letter != '\0')
+				letters.add(boxes[i].letter);
+			}
+			for (int i = 0; i < 26; i++) {
+				char possibleChar = (char) ('S' + ((i < 8)? i : i - 26));
+				if (!letters.contains(new Character(possibleChar))) {
+					letter = possibleChar;
+					break;
+				}
+			}
+		}
 	}
 	
 	private void addSpider(Spider spider) {
+		checkLetter();
 		if (spiders == null)
 			spiders = new ArrayList<Spider>();
+		spider.setLabel(letter, spiders.size()+1);
 		spiders.add(spider);
 	}
 	
 	protected void computeSpiders() {
-		if (spiders != null)
+		if (spiders != null) {
+			for (int i = 0; i < spiders.size(); i++) {
+				spiders.get(i).remove();
+			}
 			spiders.clear();
+			letter = '\0';
+		}
 		if (lines != null) {
 			for (int i = 0; i < lines.size(); i++) {
 				boolean found = false;
@@ -411,15 +541,19 @@ public class Box implements Drawable, Movable, Deletable {
 						continue;
 				}
 				Spider spider = Spider.createSpider(lines.get(i));
-				if (spider != null)
+				if (spider != null) {
 					addSpider(spider);
+				}
 			}
 		}
 		if (points != null) {
 			for (int i = 0; i < points.size(); i++) {
+				if (points.get(i).line1 != null || points.get(i).line2 != null)
+					continue;
 				Spider spider = Spider.createSpider(points.get(i));
-				if (spider != null)
+				if (spider != null) {
 					addSpider(spider);
+				}
 			}
 		}
 	}
@@ -507,7 +641,7 @@ public class Box implements Drawable, Movable, Deletable {
 		Point bottomLeft = new Point(topLeft.x, topLeft.y + height);
 		Line left = new Line(topLeft, bottomLeft);
 		Point closest = connective.center.plus(new Point(connective.width/2,0));
-		if (left.start.x >= closest.x) { //connective is left of line.
+		if (left.start.x >= closest.x && topLeft.y <= closest.y-connective.width/2 && bottomLeft.y >= closest.y+connective.width/2) { //connective is left of line.
 			return left.distance(connective.center);
 		}
 		return Double.MAX_VALUE;
@@ -518,8 +652,37 @@ public class Box implements Drawable, Movable, Deletable {
 		Point bottomRight = new Point(topLeft.x + width, topLeft.y + height);
 		Line right = new Line(topRight, bottomRight);
 		Point closest = connective.center.minus(new Point(connective.width/2,0));
-		if (right.start.x <= closest.x) {//connective is right of line. 
+		if (right.start.x <= closest.x && topLeft.y <= closest.y-connective.width/2 && bottomRight.y >= closest.y+connective.width/2 ) {//connective is right of line. 
 			return right.distance(connective.center);
+		}
+		return Double.MAX_VALUE;
+	}
+	
+	protected double leftDistance(Freeform freeform) {
+		int minX = freeform.minX();
+    	int minY = freeform.minY();
+    	int maxX = freeform.maxX();
+    	int maxY = freeform.maxY();
+    	Point bottomLeft = new Point(topLeft.x, topLeft.y + height);
+		Line left = new Line(topLeft, bottomLeft);
+		Point closest = new Point(maxX, (minY+maxY)/2);
+		if (left.start.x >= closest.x) {//freeform is right of line. 
+			return left.distance(closest);
+		}
+		return Double.MAX_VALUE;
+	}
+	
+	protected double rightDistance(Freeform freeform) {
+		int minX = freeform.minX();
+    	int minY = freeform.minY();
+    	int maxX = freeform.maxX();
+    	int maxY = freeform.maxY();
+		Point topRight = new Point(topLeft.x + width, topLeft.y);
+		Point bottomRight = new Point(topLeft.x + width, topLeft.y + height);
+		Line right = new Line(topRight, bottomRight);
+		Point closest = new Point(minX, (minY+maxY)/2);
+		if (right.start.x <= closest.x) {//freeform is right of line. 
+			return right.distance(closest);
 		}
 		return Double.MAX_VALUE;
 	}
@@ -544,16 +707,20 @@ public class Box implements Drawable, Movable, Deletable {
 	@Override
 	public void remove() {
 		circles.removeAll();
-		innerBoxes.removeAll();
-		outerBoxes.removeAll();	
-		points.removeAll();
+		overlapCircles.removeAll();
+		outerCircles.removeAll();
 		lines.removeAll();
 		overlapLines.removeAll();
-		for (int i = 0; i < labels.size(); i++)
-			labels.get(i).recompute(false);
-		labels.removeAll();
+		connective.set(null, null);
 		for (int i = 0; i < innerConnectives.size(); i++)
 			innerConnectives.get(i).recompute(false);
 		innerConnectives.removeAll();
+		innerBoxes.removeAll();
+		outerBoxes.removeAll();	
+		overlapBoxes.removeAll();
+		for (int i = 0; i < labels.size(); i++)
+			labels.get(i).recompute(false);
+		labels.removeAll();
+		points.removeAll();
 	}
 }

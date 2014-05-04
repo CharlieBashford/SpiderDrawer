@@ -4,7 +4,9 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
+import spiderdrawer.exception.EmptyContainerException;
 import spiderdrawer.shape.containers.MultiContainer;
 import spiderdrawer.shape.containers.SingleContainer;
 import spiderdrawer.shape.interfaces.Deletable;
@@ -24,7 +26,8 @@ public class Point implements Drawable, Movable, Deletable {
 	boolean line2Start;
 	private ArrayList<Shape> shapeList;
 	MultiContainer<Circle, Point> circles;
-	SingleContainer<Box, Point> box;
+	MultiContainer<Box, Point> boxes;
+	Label label;
 	
 	public Point(int x, int y) {
 		this.x = x;
@@ -34,7 +37,7 @@ public class Point implements Drawable, Movable, Deletable {
 	
 	private void createContainers() {
 		circles = new MultiContainer<Circle, Point>(this);
-		box = new SingleContainer<Box, Point>(this);
+		boxes = new MultiContainer<Box, Point>(this);
 	}
 	
 	public static Point create(int x, int y, ArrayList<Shape> shapeList) {
@@ -69,6 +72,30 @@ public class Point implements Drawable, Movable, Deletable {
 	
 	protected Line getLine2() {
 		return line2;
+	}
+	
+	public String asString() throws EmptyContainerException { //TODO: Need to check circles and excluded circles have labels, and deal with error better. 
+		String result = "([";
+		for (int i = 0; i < circles.size(); i++) {
+			result += "\"" + circles.get(i).label.getWExc("Label").getChar() + "\"";
+			if (i != circles.size()-1)
+				result += ", ";
+		}
+		result += "],[";
+		if (boxes.size() == 1) {
+			Box box = boxes.get(0);
+			if (!box.circles.containsAll(circles))
+				System.out.println("ERROR: box doesn't contain all the circles that point is within.");
+			List<Circle> excluded = box.circles.intersection(circles);
+			for (int i = 0; i < excluded.size(); i++) {
+				result += "\"" + excluded.get(i).label.getWExc("Label").getChar() + "\"";
+				if (i != excluded.size()-1)
+					result += ", ";
+			}
+		} else {
+			System.out.println("ERROR: point not in single box.");
+		}
+		return result + "])";
 	}
 	
 	public boolean isFullyConnected() {
@@ -141,12 +168,21 @@ public class Point implements Drawable, Movable, Deletable {
 		g2.fillOval(x-2, y-2, 4, 4);
 		g2.drawOval(x-2, y-2, 4, 4);
 		g2.setColor(Color.BLACK);
+		if (label != null) {
+			label.draw(g2);
+		}
 	}
 	
 	@Override
 	public void move(Point from, Point to) {
 		x += to.getX() - from.getX();
 		y += to.getY() - from.getY();
+		if (label != null)
+			label.move(from, to);
+	}
+	
+	protected void moveTo(Point to) {
+		move(new Point(x, y), to);
 	}
 	
 	protected double distance(Point p) {
@@ -166,7 +202,11 @@ public class Point implements Drawable, Movable, Deletable {
 		double lowestDist2 = Double.MAX_VALUE;
 		for (int i = 0; i < lines.length; i++) {
 			double startDist = lines[i].start.distance(this);
+			if (lines[i].startSet)
+				startDist = Double.MAX_VALUE;
 			double endDist = lines[i].end.distance(this);
+			if (lines[i].endSet)
+				endDist = Double.MAX_VALUE;
 			double dist;
 			boolean closerStart;
 			if (startDist < endDist) {
@@ -226,16 +266,11 @@ public class Point implements Drawable, Movable, Deletable {
 	}
 	
 	private void computeBoxes(Box[] boxes) {
-		int boxPos = -1;
+		this.boxes.removeAll();
 		for (int i = 0; i < boxes.length; i++) {
 			if (boxes[i].contains(this) && boxes[i].innerBoxes.isEmpty()) {
-				boxPos = i;
-				break;
+				this.boxes.add(boxes[i], boxes[i].points);
 			}
-		}
-		
-		if (boxPos != -1 && !boxes[boxPos].equals(box)) {
-			box.set(boxes[boxPos], boxes[boxPos].points);
 		}
 	}
 
@@ -246,8 +281,8 @@ public class Point implements Drawable, Movable, Deletable {
 		computeLines(Arrays.lineArray(shapeList));
 		computeCircles(Arrays.circleArray(shapeList));
 		computeBoxes(Arrays.boxArray(shapeList));
-		if (box.get() != null)
-			box.get().computeSpiders();
+		if (!boxes.isEmpty())
+			boxes.get(0).computeSpiders();
 	}
 	
 	protected boolean isPointSameCircle() {
@@ -289,7 +324,7 @@ public class Point implements Drawable, Movable, Deletable {
 
 	@Override
 	public boolean intersects(Line line) {
-		Circle circle = new Circle(x-2, y-2 , 5);
+		Circle circle = new Circle(x, y , 4);
 		return circle.intersects(line);
 	}
 
@@ -297,6 +332,8 @@ public class Point implements Drawable, Movable, Deletable {
 	public void remove() {
 		this.setLine1(null, line1Start);
 		this.setLine2(null, line2Start);
+		circles.removeAll();
+		boxes.removeAll();
 	}
 
 }

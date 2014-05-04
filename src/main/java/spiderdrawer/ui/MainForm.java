@@ -53,7 +53,7 @@ public class MainForm extends JFrame {
     }
     
     private void convertMenuItemClicked() {
-    	System.out.println("Convert menu item clicked");
+    	System.out.println(drawingPanel.textualRep());
     }
     
     private void loadMenuItemClicked() {
@@ -203,6 +203,15 @@ public class MainForm extends JFrame {
 			}
         });
         optionsMenu.add(clearMenuItem);
+        
+        JMenuItem undoMenuItem = new JMenuItem();
+        undoMenuItem.setText("Undo");
+        undoMenuItem.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent e) {
+				drawingPanel.undo();				
+			}
+        });
+        optionsMenu.add(undoMenuItem);
         
         JMenuItem convertMenuItem = new JMenuItem();
         convertMenuItem.setText("Convert to Text Rep");

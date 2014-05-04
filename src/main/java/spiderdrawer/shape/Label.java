@@ -18,6 +18,7 @@ import static spiderdrawer.Parameters.*;
 public class Label implements Drawable, Movable, Deletable {
 
 	char letter;
+	int number;
 	Point center;
 	int width;
 	int height;
@@ -33,10 +34,17 @@ public class Label implements Drawable, Movable, Deletable {
 		this.letter = letter;
 		this.center = position;
 		setHeightAndWidth();
+		this.number = 0;
 	}
 	
 	public Label(char letter, int positionX, int positionY) {
 		this(letter, new Point(positionX, positionY));
+	}
+	
+	public Label(char letter, int number, int positionX, int positionY) {
+		this(letter, positionX, positionY);
+		this.number = number;
+		createContainers();
 	}
 	
 	private void createContainers() {
@@ -220,7 +228,7 @@ public class Label implements Drawable, Movable, Deletable {
 	
 	@Override
 	public boolean isValid() {
-		return hasCircle() && !hasSameLabel();
+		return (hasCircle() && !hasSameLabel()) || number != 0;
 	}
 	
 	@Override
@@ -234,6 +242,11 @@ public class Label implements Drawable, Movable, Deletable {
 		g2.setFont(new Font(g2.getFont().getFontName(),Font.PLAIN, FONT_SIZE));
 		g2.drawChars(array, 0, 1, center.getX() - width/2, center.getY() + height/2);
 		g2.setColor(Color.BLACK);
+		if (number != 0) {
+			array = String.valueOf(number).toCharArray();
+			g2.setFont(new Font(g2.getFont().getFontName(),Font.PLAIN, FONT_SIZE-4));
+			g2.drawChars(array, 0, array.length, center.getX() + width - 6, center.getY() + height/2 + 7);
+		}
 	}
 
 	@Override

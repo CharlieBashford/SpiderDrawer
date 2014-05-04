@@ -7,17 +7,27 @@ import java.util.Set;
 
 import spiderdrawer.shape.interfaces.Deletable;
 import spiderdrawer.shape.interfaces.Drawable;
+import static spiderdrawer.Parameters.FREEFORM_OVERLAP_DIST;
 
 public class Freeform implements Drawable, Deletable {
 
 	ArrayList<Point> points;
+	boolean removed;
 	
 	public Freeform() {
 		this.points = new ArrayList<Point>();
+		removed = false;
 	}
 	
 	public Freeform(ArrayList<Point> points) {
 		this.points = points;
+		removed = false;
+	}
+	
+	public Freeform(Freeform[] freeforms) {
+		this.points = new ArrayList<Point>();
+		for (int i = 0; i < freeforms.length; i++)
+			this.points.addAll(freeforms[i].points);
 	}
 	
 	public Freeform(Point point) {
@@ -73,7 +83,7 @@ public class Freeform implements Drawable, Deletable {
     	ArrayList<Freeform> overlappingFreeforms = new ArrayList<Freeform>();
     	for (int i = 0; i < freeforms.size(); i++) {
 			Freeform currentFF = (Freeform) freeforms.get(i);
-			if (!this.equals(currentFF) && this.overlaps(currentFF, 10)) {
+			if (!this.equals(currentFF) && this.overlaps(currentFF, FREEFORM_OVERLAP_DIST)) {
 				overlappingFreeforms.add(currentFF);
 			}
     	}
@@ -165,9 +175,21 @@ public class Freeform implements Drawable, Deletable {
     	}
     	return intersectingFreeforms;
     }
+    
+    public double leftDistance(Box box) { //Swap left and right because change of perspective.
+		return box.rightDistance(this);
+	}
+	
+	public double rightDistance(Box box) { //Swap left and right because change of perspective.
+		return box.leftDistance(this);
+	}
+	
+	public boolean isRemoved() {
+		return removed;
+	}
 
 	@Override
 	public void remove() {
-		return;//Nothing to remove.
+		removed = true;
 	}
 }

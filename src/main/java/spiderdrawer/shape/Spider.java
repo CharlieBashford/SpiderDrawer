@@ -3,6 +3,8 @@ package spiderdrawer.shape;
 import java.awt.Graphics2D;
 import java.util.ArrayList;
 
+import spiderdrawer.exception.EmptyContainerException;
+import spiderdrawer.exception.InvalidShapeException;
 import spiderdrawer.shape.interfaces.Drawable;
 import spiderdrawer.shape.interfaces.Movable;
 import spiderdrawer.shape.interfaces.Shape;
@@ -11,6 +13,7 @@ public class Spider implements Movable, Drawable {
 	
 	Line[] lines;
 	Point point;
+	Label label;
 	
 	public Spider(Line[] lines) {
 		this.lines = lines;
@@ -20,12 +23,83 @@ public class Spider implements Movable, Drawable {
 		this.point = point;
 	}
 	
+	public void setLabel(char letter, int number) {
+		if (isSinglePoint()) {
+			setLabel(point, letter, number);
+		} else {
+			if (lines.length > 0) {
+				Line line = lines[0];
+				Point point;
+				if (line.start.isFullyConnected()) {
+					point = line.end;
+				} else {
+					point = line.start;
+				}
+				setLabel(point, letter, number);
+			}
+		}
+	}
+	
+	public void removeLabel() {
+		if (isSinglePoint()) {
+			removeLabel(point);
+		} else {
+			if (lines.length > 0) {
+				Line line = lines[0];
+				Point point;
+				if (line.end.label != null) {
+					point = line.end;
+				} else {
+					point = line.start;
+				}
+				removeLabel(point);
+			}
+		}
+	}
+	
+	public String asString() throws EmptyContainerException, InvalidShapeException {
+		if (!isValid())
+			throw new InvalidShapeException("Spider");
+		String result = "(\"" + label.letter + label.number + "\",[";
+		if (isSinglePoint()) {
+			result += point.asString();
+		} else {
+			for (int i = 0; i < lines.length; i++) {
+				result += lines[i].asString();
+				if (i != lines.length -1)
+					result += ",";
+			}
+		}
+		return result + "])";
+	}
+	
+	private void setLabel(Point point, char letter, int number) {
+		label = new Label(letter, number, point.x - 15, point.y - 25);
+		point.label = label;
+	}
+	
+	private void removeLabel(Point point) {
+		point.label = null;
+		label = null;
+	}
+	
 	protected boolean isSinglePoint() { //Assume either lines or point set.
 		return (point != null);
 	}
 	
 	@Override
 	public boolean isValid() {
+		if (label == null)
+			return false;
+		
+		if (isSinglePoint()) {
+			return point.isValid();
+		} else {
+			for (int i = 0; i < lines.length; i++) {
+				if (!lines[i].isValid())
+					return false;
+			}		
+		}
 		return true;
 	}
 
@@ -37,6 +111,9 @@ public class Spider implements Movable, Drawable {
 			for (int i = 0; i < lines.length; i++) {
 				lines[i].draw(g2);
 			}		
+		}
+		if (label != null) {
+			label.draw(g2);
 		}
 	}
 	
@@ -164,5 +241,9 @@ public class Spider implements Movable, Drawable {
 		if (!iterLine.hasBothEnds())
 			return null;
 		return new Spider(lineList.toArray(new Line[0]));
+	}
+	
+	protected void remove() {
+		removeLabel();
 	}
 }

@@ -2,7 +2,9 @@ package spiderdrawer.shape;
 
 import java.awt.Graphics2D;
 import java.util.ArrayList;
+import java.util.List;
 
+import spiderdrawer.exception.EmptyContainerException;
 import spiderdrawer.shape.containers.MultiContainer;
 import spiderdrawer.shape.interfaces.Deletable;
 import spiderdrawer.shape.interfaces.Drawable;
@@ -47,6 +49,24 @@ public class Shading implements Deletable {
 		}
 		return circleList.toArray(new Circle[0]);
  	}
+	
+	public String asString() throws EmptyContainerException {
+		String result = "([";
+		for (int i = 0; i < included.size(); i++) {
+			result += "\"" + included.get(i).label.getWExc("Label").getChar() + "\"";
+			if (i != included.size()-1)
+				result += ", ";
+		}
+		result += "],[";
+		if (excluded != null) {
+			for (int i = 0; i < excluded.size(); i++) {
+				result += "\"" + excluded.get(i).label.getWExc("Label").getChar() + "\"";
+				if (i != excluded.size()-1)
+					result += ", ";
+			}
+		}
+		return result + "])";
+	}
 	
 	private void computeIncluded(Freeform freeform, Circle[] circles) {
 		for (int i = 0; i < circles.length; i++) {

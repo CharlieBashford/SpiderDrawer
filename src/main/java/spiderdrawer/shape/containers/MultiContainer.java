@@ -1,6 +1,7 @@
 package spiderdrawer.shape.containers;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class MultiContainer<T,S> extends Container<T,S> {
 
@@ -62,8 +63,15 @@ public class MultiContainer<T,S> extends Container<T,S> {
 		return list.get(index);
 	}
 	
-	public boolean containsAll(MultiContainer<T,S> mc) {
+	public boolean containsAll(MultiContainer<T,?> mc) {
 		return list.containsAll(mc.list);
+	}
+	
+	public List<T> intersection(MultiContainer<T, ?> mc) {
+		List<T> tempList = new ArrayList<T>();
+		tempList.addAll(list);
+		tempList.removeAll(mc.list);
+		return tempList;
 	}
 	
 	public boolean isEmpty() {

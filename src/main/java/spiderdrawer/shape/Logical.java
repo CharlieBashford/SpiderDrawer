@@ -17,12 +17,12 @@ public enum Logical {
     
     public static Logical create(char character) {
     	switch (character) {
-		case '\u2194': return EQUIVALENCE;
-		case '\u2192': return IMPLICATION;
-		case '\u2228': return DISJUNCTION;
-		case '\u2227': return CONJUNCTION;
-		case '\u00AC': return NEGATION;
-		default: return null;
-	}
+			case '\u2194': return EQUIVALENCE;
+			case '\u2192': return IMPLICATION;
+			case '\u2228': return DISJUNCTION;
+			case '\u2227': return CONJUNCTION;
+			case '\u00AC': return NEGATION;
+			default: return null;
+    	}
     }
 }

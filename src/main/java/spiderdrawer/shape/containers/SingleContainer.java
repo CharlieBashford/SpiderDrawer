@@ -1,5 +1,7 @@
 package spiderdrawer.shape.containers;
 
+import spiderdrawer.exception.EmptyContainerException;
+
 public class SingleContainer<T,S> extends Container<T,S> {
 
 	T t;
@@ -37,6 +39,12 @@ public class SingleContainer<T,S> extends Container<T,S> {
 	}
 	
 	public T get() {
+		return t;
+	}
+	
+	public T getWExc(String type) throws EmptyContainerException {
+		if (t == null)
+			throw new EmptyContainerException(parent.getClass().getSimpleName(), type);
 		return t;
 	}
 }

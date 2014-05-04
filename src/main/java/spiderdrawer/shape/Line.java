@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.util.ArrayList;
 
+import spiderdrawer.exception.EmptyContainerException;
 import spiderdrawer.shape.containers.MultiContainer;
 import spiderdrawer.shape.containers.SingleContainer;
 import spiderdrawer.shape.interfaces.Deletable;
@@ -22,7 +23,7 @@ public class Line implements Drawable, Movable, Deletable {
 	private ArrayList<Shape> shapeList;
 	Point lastMovedTo;
 	double lastDistAlong;
-	SingleContainer<Box, Line> box;
+	MultiContainer<Box, Line> boxes;
 	MultiContainer<Box, Line> overlapBoxes;
 	
 	public Line (Point start, Point end) {
@@ -35,7 +36,7 @@ public class Line implements Drawable, Movable, Deletable {
 	}
 	
 	private void createContainers() {
-		box = new SingleContainer<Box, Line>(this);
+		boxes = new MultiContainer<Box, Line>(this);
 		overlapBoxes = new MultiContainer<Box, Line>(this);
 	}
 	
@@ -101,11 +102,11 @@ public class Line implements Drawable, Movable, Deletable {
 		double minStartDist = Double.MAX_VALUE;
 		double minEndDist = Double.MAX_VALUE;
 		for (int i = 0; i < points.length; i++) {
-			double startDist = this.start.distance(points[i]);
-			double endDist = this.end.distance(points[i]);
-			if (isConnected(points[i])) {
+			if (points[i].isFullyConnected()) {
 				continue;
 			}
+			double startDist = this.start.distance(points[i]);
+			double endDist = this.end.distance(points[i]);
 			if (startDist < endDist && startDist < minStartDist) {
 				minStartDist = startDist;
 				startPos = i;
@@ -134,15 +135,11 @@ public class Line implements Drawable, Movable, Deletable {
 	}
 	
 	private void computeBoxes(Box[] boxes) {
-		int boxPos = -1;
+		this.boxes.removeAll();
 		for (int i = 0; i < boxes.length; i++) {
 			if (boxes[i].contains(this) && boxes[i].innerBoxes.isEmpty()) {
-				boxPos = i;
+				this.boxes.add(boxes[i], boxes[i].lines);
 			}
-		}
-		
-		if (boxPos != -1 && !boxes[boxPos].equals(box)) {
-			box.set(boxes[boxPos], boxes[boxPos].lines);
 		}
 	}
 	
@@ -160,8 +157,8 @@ public class Line implements Drawable, Movable, Deletable {
 		computePoints(Arrays.pointArray(shapeList));
 		computeBoxes(Arrays.boxArray(shapeList));
 		computeOverlapBoxes(Arrays.boxArray(shapeList));
-		if (box.get() != null)
-			box.get().computeSpiders();
+		if (!boxes.isEmpty())
+			boxes.get(0).computeSpiders();
 	}
 	
 	protected void setPoint(Point point, boolean start) {
@@ -180,8 +177,7 @@ public class Line implements Drawable, Movable, Deletable {
 				}
 				int lineNum = point.whichLine(this);
 				if (lineNum == 0) {
-					this.start.x = oldStart.getX();
-					this.start.y = oldStart.getY();
+					this.start.moveTo(oldStart);
 					lineNum = point.whichLineNull();
 				}
 				
@@ -225,8 +221,7 @@ public class Line implements Drawable, Movable, Deletable {
 				}
 				int lineNum = point.whichLine(this);
 				if (lineNum == 0) {
-					this.end.x = oldEnd.getX();
-					this.end.y = oldEnd.getY();
+					this.end.moveTo(oldEnd);
 					lineNum = point.whichLineNull();
 				}
 				
@@ -285,7 +280,7 @@ public class Line implements Drawable, Movable, Deletable {
 	
 	@Override
 	public boolean isValid() {
-		return hasBothEnds() && equalPointCircles() && !overlapBoxes.isEmpty();
+		return hasBothEnds() && !equalPointCircles() && overlapBoxes.isEmpty();
 	}
 	
 	@Override
@@ -359,6 +354,10 @@ public class Line implements Drawable, Movable, Deletable {
 		return Math.max(0,  this.distance(c.center) - c.getRadius());
 	}
 	
+	public String asString() throws EmptyContainerException {
+		return start.asString() + ", " + end.asString();
+	}
+	
 	
 	protected double distance(Line l) {
 		if (intersects(l)) {
@@ -410,6 +409,10 @@ public class Line implements Drawable, Movable, Deletable {
 		}
 	}
 	
+	public double length() {
+		return Math.sqrt((start.x - end.x)*(start.x - end.x) + (start.y - end.y)*(start.y - end.y));
+	}
+	
 	@Override
 	public void move(Point from, Point to) {
 		double distAlong;
@@ -439,7 +442,7 @@ public class Line implements Drawable, Movable, Deletable {
 		if (endSet) {
 			this.setPoint(null, false);
 		}
-		box.set(null, null);
+		boxes.removeAll();
 		overlapBoxes.removeAll();
 	}
 	

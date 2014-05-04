@@ -61,6 +61,17 @@ public class Connective implements Drawable, Movable, Deletable {
 			default: return '\0';
 		}
 	}
+	
+	public String asString() {
+		switch (logical) {
+			case EQUIVALENCE: return "<-->";
+			case IMPLICATION: return "-->";
+			case DISJUNCTION: return "|";
+			case CONJUNCTION: return "&";
+			case NEGATION:	  return "not";
+			default: return "";
+		}
+	}
 
 	
 	private void setHeightAndWidth() {
@@ -72,9 +83,17 @@ public class Connective implements Drawable, Movable, Deletable {
 	
 	protected boolean isFullyConnected() {
 		if (logical == Logical.NEGATION) {
-			return (rightBox != null);
+			return (rightBox.get() != null);
 		}
 		return (leftBox.get() != null) && (rightBox.get() != null);
+	}
+	
+	public Box getLeftBox() {
+		return leftBox.get(); 
+	}
+	
+	public Box getRightBox() {
+		return rightBox.get();
 	}
 	
 	@Override
@@ -214,12 +233,9 @@ public class Connective implements Drawable, Movable, Deletable {
 
 	@Override
 	public void remove() {
-		if (leftBox.get() != null)
-			leftBox.set(null, null);
-		if (rightBox.get() != null)	
-			rightBox.set(null, null);
-		if (outerBox != null)
-			outerBox.set(null, null);
+		leftBox.set(null, null);
+		rightBox.set(null, null);
+		outerBox.set(null, null);
 	}
 	
 	

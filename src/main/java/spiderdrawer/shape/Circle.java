@@ -24,13 +24,14 @@ public class Circle implements Drawable, Movable, Deletable {
 	boolean moveLabel;
 	MultiContainer<Point, Circle> points;
 	MultiContainer<Shading, Circle> shadings;
-	SingleContainer<Box, Circle> box;
+	MultiContainer<Box, Circle> boxes;
 	MultiContainer<Box, Circle> innerBoxes;
 	MultiContainer<Box, Circle> overlapBoxes;
 	
 	public Circle(Point center, int radius) {
 		this.center = center;
-		this.radius = Math.max(radius,MIN_CIRCLE_RADIUS);
+		this.radius = radius;
+		createContainers();
 	}
 	
 	public Circle(int centerX, int centerY, int radius) {
@@ -41,13 +42,14 @@ public class Circle implements Drawable, Movable, Deletable {
 		label = new SingleContainer<Label, Circle>(this);
 		points = new MultiContainer<Point, Circle>(this);
 		shadings = new MultiContainer<Shading, Circle>(this);
-		box = new SingleContainer<Box, Circle>(this);
+		boxes = new MultiContainer<Box, Circle>(this);
 		innerBoxes = new MultiContainer<Box, Circle>(this);
 		overlapBoxes = new MultiContainer<Box, Circle>(this);
 		
 	}
 	
 	public static Circle create(int centerX, int centerY, int radius, ArrayList<Shape> shapeList) {
+		radius = Math.max(radius,MIN_CIRCLE_RADIUS);
 		Circle circle = new Circle(centerX, centerY, radius);
 		circle.createContainers();
 		circle.shapeList = shapeList;
@@ -70,7 +72,7 @@ public class Circle implements Drawable, Movable, Deletable {
 		return radius;
 	}
 	
-	protected boolean hasLabel() {
+	public boolean hasLabel() {
 		return label.get() != null;
 	}
 	
@@ -124,10 +126,10 @@ public class Circle implements Drawable, Movable, Deletable {
 		return Math.abs(signedDistance(p));
 	}
 	
-	protected double signedDistance(Point p) {
+	public double signedDistance(Point p) {
 		return center.distance(p) - radius;
 	}
-	
+		
 	public double distance(Label label) {
 		return label.distance(this);
 	}
@@ -144,28 +146,26 @@ public class Circle implements Drawable, Movable, Deletable {
 	public boolean isValid() {
 		return hasLabel() && overlapBoxes.isEmpty() && innerBoxes.isEmpty();
 	}
-	
+		
 	@Override
 	public void draw(Graphics2D g2) {
-		if (shadings != null) {
-			for (int i = 0; i < shadings.size(); i++) {
-				if (shadings.get(i).included != null && shadings.get(i).included.size() > 0 && shadings.get(i).included.get(0).equals(this)) {
-					g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.2f));
-			    	g2.setColor(Color.BLUE);
-					Area area = new Area(new Ellipse2D.Float(center.x-radius, center.y-radius, radius*2, radius*2));
-					for (int j = 1; j < shadings.get(i).included.size(); j++) {
-						Circle circle = shadings.get(i).included.get(j);
-						area.intersect(new Area(new Ellipse2D.Float(circle.center.x-circle.radius, circle.center.y-circle.radius, circle.radius*2, circle.radius*2)));
-					}
-					if (shadings.get(i).excluded != null) {
-						for (int j = 0; j < shadings.get(i).excluded.size(); j++) {
-							Circle circle = shadings.get(i).excluded.get(j);
-							area.subtract(new Area(new Ellipse2D.Float(circle.center.x-circle.radius, circle.center.y-circle.radius, circle.radius*2, circle.radius*2)));
-						}
-					}
-					g2.fill(area);
-				    g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1));
+		for (int i = 0; i < shadings.size(); i++) {
+			if (shadings.get(i).included != null && shadings.get(i).included.size() > 0 && shadings.get(i).included.get(0).equals(this)) {
+				g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.2f));
+		    	g2.setColor(Color.BLUE);
+				Area area = new Area(new Ellipse2D.Float(center.x-radius, center.y-radius, radius*2, radius*2));
+				for (int j = 1; j < shadings.get(i).included.size(); j++) {
+					Circle circle = shadings.get(i).included.get(j);
+					area.intersect(new Area(new Ellipse2D.Float(circle.center.x-circle.radius, circle.center.y-circle.radius, circle.radius*2, circle.radius*2)));
 				}
+				if (shadings.get(i).excluded != null) {
+					for (int j = 0; j < shadings.get(i).excluded.size(); j++) {
+						Circle circle = shadings.get(i).excluded.get(j);
+						area.subtract(new Area(new Ellipse2D.Float(circle.center.x-circle.radius, circle.center.y-circle.radius, circle.radius*2, circle.radius*2)));
+					}
+				}
+				g2.fill(area);
+			    g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1));
 			}
 		}
 		if (!isValid()) {
@@ -231,16 +231,11 @@ public class Circle implements Drawable, Movable, Deletable {
 	}
 	
 	private void computeBoxes(Box[] boxes) {
-		int boxPos = -1;
+		this.boxes.removeAll();
 		for (int i = 0; i < boxes.length; i++) {
 			if (boxes[i].contains(this) && !boxes[i].innerBoxesContains(this)) {
-				boxPos = i;
-				break;
+				this.boxes.add(boxes[i], boxes[i].circles);
 			}
-		}
-		
-		if (boxPos != -1 && !boxes[boxPos].equals(box)) {
-		box.set(boxes[boxPos], boxes[boxPos].circles);
 		}
 		/* Inner Boxes */
 		innerBoxes.removeAll();
@@ -265,8 +260,10 @@ public class Circle implements Drawable, Movable, Deletable {
 	public void recompute(boolean moving) {
 		if (shapeList == null)
 			return;
-		computeLabels(Arrays.labelArray(shapeList));
-		computePoints(Arrays.pointArray(shapeList));
+		if (!moving) {
+			computeLabels(Arrays.labelArray(shapeList));
+			computePoints(Arrays.pointArray(shapeList));
+		}
 		computeOverlapBoxes(Arrays.boxArray(shapeList));
 		computeBoxes(Arrays.boxArray(shapeList));
 		if (!moving) {
@@ -326,8 +323,10 @@ public class Circle implements Drawable, Movable, Deletable {
 			}
 		}
 		points.removeAll();
+		shadings.removeAll();
+		boxes.removeAll();
 		innerBoxes.removeAll();
 		overlapBoxes.removeAll();
-		box.set(null, null);
+		
 	}
 }
