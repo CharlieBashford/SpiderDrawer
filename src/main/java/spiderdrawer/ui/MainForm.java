@@ -34,7 +34,7 @@ import java.nio.file.Paths;
  *
  * @author charliebashford
  */
-public class MainForm extends JFrame {
+public class MainForm extends JDialog {
 	
 	private DrawingPanel drawingPanel;
     private MessageBox messageBox = null;
@@ -43,7 +43,8 @@ public class MainForm extends JFrame {
     /**
      * Creates new form MainForm
      */
-    public MainForm() {
+    public MainForm(java.awt.Frame parent, boolean modal) {
+    	super(parent, modal);
         initComponents();
     }
     
@@ -54,6 +55,12 @@ public class MainForm extends JFrame {
     
     private void convertMenuItemClicked() {
     	System.out.println(drawingPanel.textualRep());
+    }
+    
+    public String getSpiderDiagram() {
+    	String textRep = drawingPanel.textualRep();
+    	System.out.println(textRep);
+    	return textRep;
     }
     
     private void loadMenuItemClicked() {
@@ -146,8 +153,8 @@ public class MainForm extends JFrame {
     private void initComponents() {
         setSize(900, 650);
         setLocationRelativeTo(null);
-        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
-        
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+
         addDrawingFrame();
         addMenu();      
         
@@ -350,7 +357,7 @@ public class MainForm extends JFrame {
      * @param args the command line arguments
      */
     public static void main(String args[]) {
-        new MainForm().setVisible(true);
+        new MainForm(null, true).setVisible(true);
     }
 
 

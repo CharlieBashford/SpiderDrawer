@@ -25,6 +25,7 @@ public class Line implements Drawable, Movable, Deletable {
 	double lastDistAlong;
 	MultiContainer<Box, Line> boxes;
 	MultiContainer<Box, Line> overlapBoxes;
+	SingleContainer<Spider, Line> spider;
 	
 	public Line (Point start, Point end) {
 		this.start = start;
@@ -38,6 +39,7 @@ public class Line implements Drawable, Movable, Deletable {
 	private void createContainers() {
 		boxes = new MultiContainer<Box, Line>(this);
 		overlapBoxes = new MultiContainer<Box, Line>(this);
+		spider = new SingleContainer<Spider, Line>(this);
 	}
 	
 	public static Line create(int startX, int startY, int endX, int endY, ArrayList<Shape> shapeList) {
@@ -78,20 +80,19 @@ public class Line implements Drawable, Movable, Deletable {
 	}
 	
 	public boolean isConnected(Point point) {
-		boolean atStart;
-		if (this.startSet)
-			atStart = false;
-		else
-			atStart = true;
+		return isConnected(point, this.startSet);
+	}
+	
+	public boolean isConnected(Point point, boolean atStart) {
 		Line line = this;
-		while (line.isSet(!atStart)) {
-			Point otherPoint = line.getPoint(!atStart);
+		while (line.isSet(atStart)) {
+			Point otherPoint = line.getPoint(atStart);
 			if (point.equals(otherPoint))
 				return true;
 			if (!otherPoint.isFullyConnected())
 				return false;
 			line = otherPoint.otherLine(line);
-			atStart = line.atStart(otherPoint);
+			atStart = !line.atStart(otherPoint);
 		}
 		return false;
 	}
@@ -157,8 +158,41 @@ public class Line implements Drawable, Movable, Deletable {
 		computePoints(Arrays.pointArray(shapeList));
 		computeBoxes(Arrays.boxArray(shapeList));
 		computeOverlapBoxes(Arrays.boxArray(shapeList));
-		if (!boxes.isEmpty())
-			boxes.get(0).computeSpiders();
+		computeSpider();
+	}
+	
+	private void computeSpider() {
+		if (spider.get() == null && !startSet && !endSet) {
+			Spider spider = new Spider();
+			spider.add(this);
+		} else {
+			if ((startSet && start.spider.get() != null) && (endSet && end.spider.get() != null) && !start.spider.get().equals(spider.get()) && !end.spider.get().equals(spider.get())) {
+				Point start, end;
+				if ((this.start.spider.get().label == null || this.end.spider.get().label == null) || this.start.spider.get().label.number < this.end.spider.get().label.number) {
+					start = this.start;
+					end = this.end;
+				} else {
+					start = this.end;
+					end = this.start;
+				}
+				Spider spiderS = start.spider.get();
+				spiderS.lines.add(this, this.spider);
+				Spider tempSpider = end.spider.get();
+				spiderS.add(end.spider.get());
+				tempSpider.remove();
+			} else if (startSet && start.spider.get() != null && !start.spider.get().equals(spider.get())) { //line2.spider == null
+				Spider tempSpider = spider.get();
+				start.spider.get().add(this);
+				if (tempSpider != null)
+					start.spider.get().add(tempSpider);
+			} else if (endSet && end.spider.get() != null && !end.spider.get().equals(spider.get())) { //line2.spider == null
+				Spider tempSpider = spider.get();
+				end.spider.get().add(this);
+				if (tempSpider != null)
+					end.spider.get().add(tempSpider);
+			}
+		}
+		spider.get().computeBox();
 	}
 	
 	protected void setPoint(Point point, boolean start) {
@@ -433,9 +467,14 @@ public class Line implements Drawable, Movable, Deletable {
 	public boolean isWithin(Point p) {
 		return this.distance(p) < 4;
 	}
+	
+	public Spider getSpider() {
+		return spider.get();
+	}
 
 	@Override
 	public void remove() {
+		spider.get().remove(this);
 		if (startSet) {
 			this.setPoint(null, true);
 		}

@@ -185,7 +185,7 @@ public class DrawingPanel extends JPanel {
 			                    	if (shape instanceof Line) {
 			                    		double len = ((Line) shape).length();
 			                    		if (len < 1) {
-			                    			System.out.println("Line is too short: converting to Nothing");
+			                    			System.out.println("Line is too short: deleting");
 			                    			repaint();
 			                    			return;
 			                    		} else if (len < 10) {
@@ -352,6 +352,8 @@ public class DrawingPanel extends JPanel {
     
     public void clearDrawable() {
     	shapeList.clear();
+    	drawingBox = Box.create(0, 0, getWidth()-1, getHeight()-1, shapeList);
+    	shapeList.add(drawingBox);
     }
     
     public void undo() {

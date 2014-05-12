@@ -74,6 +74,10 @@ public class MultiContainer<T,S> extends Container<T,S> {
 		return tempList;
 	}
 	
+	public int indexOf(T t) {
+		return list.indexOf(t);
+	}
+	
 	public boolean isEmpty() {
 		return (list.size() == 0);
 	}

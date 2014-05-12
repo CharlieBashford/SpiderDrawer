@@ -29,7 +29,7 @@ public class FileChooserForm extends JDialog implements ActionListener {
 	private String filename;
 	private JList<String> list;
 	
-	public FileChooserForm(java.awt.Frame parent, boolean modal, String directory) {
+	public FileChooserForm(java.awt.Dialog parent, boolean modal, String directory) {
         super(parent, modal);
 		this.directory = directory;
 		initComponents();
@@ -139,7 +139,7 @@ public class FileChooserForm extends JDialog implements ActionListener {
     	return filenames;
     }
     
-    public static String showDialog(java.awt.Frame parent, String directory) {
+    public static String showDialog(java.awt.Dialog parent, String directory) {
     	FileChooserForm fileChooserForm = new FileChooserForm(parent, true, directory);
     	if (fileChooserForm.list.getModel().getSize() == 0) {
     		JOptionPane optionPane = new JOptionPane(new JLabel("No files to load!",JLabel.CENTER));  

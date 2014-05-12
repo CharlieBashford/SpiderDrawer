@@ -27,6 +27,7 @@ public class Circle implements Drawable, Movable, Deletable {
 	MultiContainer<Box, Circle> boxes;
 	MultiContainer<Box, Circle> innerBoxes;
 	MultiContainer<Box, Circle> overlapBoxes;
+	MultiContainer<Circle, Circle> overlapCircles;
 	
 	public Circle(Point center, int radius) {
 		this.center = center;
@@ -45,7 +46,7 @@ public class Circle implements Drawable, Movable, Deletable {
 		boxes = new MultiContainer<Box, Circle>(this);
 		innerBoxes = new MultiContainer<Box, Circle>(this);
 		overlapBoxes = new MultiContainer<Box, Circle>(this);
-		
+		overlapCircles = new MultiContainer<Circle, Circle>(this);
 	}
 	
 	public static Circle create(int centerX, int centerY, int radius, ArrayList<Shape> shapeList) {
@@ -255,6 +256,14 @@ public class Circle implements Drawable, Movable, Deletable {
 			}
 		}
 	}
+	
+	private void computeOverlapCircles(Circle[] circles) {
+		overlapCircles.removeAll();
+		for (int i = 0; i < circles.length; i++) {
+			if (circles[i].intersects(this))
+				overlapCircles.add(circles[i], circles[i].overlapCircles);
+		}
+	}
 
 	@Override
 	public void recompute(boolean moving) {
@@ -265,6 +274,7 @@ public class Circle implements Drawable, Movable, Deletable {
 			computePoints(Arrays.pointArray(shapeList));
 		}
 		computeOverlapBoxes(Arrays.boxArray(shapeList));
+		computeOverlapCircles(Arrays.circleArray(shapeList));
 		computeBoxes(Arrays.boxArray(shapeList));
 		if (!moving) {
 			moveLabel = true;
@@ -327,6 +337,6 @@ public class Circle implements Drawable, Movable, Deletable {
 		boxes.removeAll();
 		innerBoxes.removeAll();
 		overlapBoxes.removeAll();
-		
+		overlapCircles.removeAll();
 	}
 }

@@ -28,6 +28,7 @@ public class Point implements Drawable, Movable, Deletable {
 	MultiContainer<Circle, Point> circles;
 	MultiContainer<Box, Point> boxes;
 	Label label;
+	SingleContainer<Spider, Point> spider;
 	
 	public Point(int x, int y) {
 		this.x = x;
@@ -38,6 +39,7 @@ public class Point implements Drawable, Movable, Deletable {
 	private void createContainers() {
 		circles = new MultiContainer<Circle, Point>(this);
 		boxes = new MultiContainer<Box, Point>(this);
+		spider = new SingleContainer<Spider, Point>(this);
 	}
 	
 	public static Point create(int x, int y, ArrayList<Shape> shapeList) {
@@ -240,16 +242,16 @@ public class Point implements Drawable, Movable, Deletable {
 		}
 		
 		if (line1 == null) {
-			if (lowestDist1 <= POINT_LINE_DIST && line1Pos != -1) {
+			if (lowestDist1 <= POINT_LINE_DIST && line1Pos != -1 && !lines[line1Pos].isConnected(this)) {
 				System.out.println("close to line 1 at " + ((line1Start)? "start" : "end"));
 				this.setLine1(lines[line1Pos], line1Start);
 			}
-			if (line2 == null && lowestDist2 <= POINT_LINE_DIST && line2Pos != -1) {
+			if (line2 == null && lowestDist2 <= POINT_LINE_DIST && line2Pos != -1 && !lines[line2Pos].isConnected(this)) {
 				System.out.println("close to line 2 at " + ((line2Start)? "start" : "end"));
 				this.setLine2(lines[line2Pos], line2Start);
 			}
 		} else if (line2 == null) {
-			if (lowestDist1 <= POINT_LINE_DIST && line1Pos != -1) {
+			if (lowestDist1 <= POINT_LINE_DIST && line1Pos != -1 && !lines[line1Pos].isConnected(this)) {
 				System.out.println("close to line 2 at " + ((line1Start)? "start" : "end"));
 				this.setLine2(lines[line1Pos], line1Start);
 			}
@@ -281,8 +283,33 @@ public class Point implements Drawable, Movable, Deletable {
 		computeLines(Arrays.lineArray(shapeList));
 		computeCircles(Arrays.circleArray(shapeList));
 		computeBoxes(Arrays.boxArray(shapeList));
-		if (!boxes.isEmpty())
-			boxes.get(0).computeSpiders();
+		computeSpider();
+	}
+	
+	private void computeSpider() {
+		if (line1 == null && line2 == null && spider.get() == null) {
+			Spider spider = new Spider();
+			spider.add(this);
+		} else {
+			if ((line1 != null && line1.spider.get() != null) && (line2 != null && line2.spider.get() != null) && !line1.spider.get().equals(spider.get()) && !line2.spider.get().equals(spider.get())) {
+				Spider spiderl1 = line1.spider.get();
+				spiderl1.points.add(this, this.spider);
+				Spider tempSpider = line2.spider.get();
+				spiderl1.add(line2.spider.get());
+				tempSpider.remove();
+			} else if (line1 != null && line1.spider.get() != null && !line1.spider.get().equals(spider.get())) { //line2.spider == null
+				Spider tempSpider = spider.get();
+				line1.spider.get().add(this);
+				if (tempSpider != null)
+					tempSpider.remove();
+			} else if (line2 != null && line2.spider.get() != null && !line2.spider.get().equals(spider.get())) { //line1.spider == null
+				Spider tempSpider = spider.get();
+				line2.spider.get().add(this);
+				if (tempSpider != null)
+					tempSpider.remove();
+			}
+		}
+		spider.get().computeBox();
 	}
 	
 	protected boolean isPointSameCircle() {
@@ -327,9 +354,17 @@ public class Point implements Drawable, Movable, Deletable {
 		Circle circle = new Circle(x, y , 4);
 		return circle.intersects(line);
 	}
+	
+	public Spider getSpider() {
+		return spider.get();
+	}
 
 	@Override
 	public void remove() {
+		Spider tempSpider = spider.get();
+		spider.get().remove(this);
+		if (label != null)
+			tempSpider.setLabel(label.letter, label.number);
 		this.setLine1(null, line1Start);
 		this.setLine2(null, line2Start);
 		circles.removeAll();
