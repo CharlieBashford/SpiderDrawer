@@ -8,6 +8,7 @@ import spiderdrawer.exception.EmptyContainerException;
 import spiderdrawer.shape.containers.MultiContainer;
 import spiderdrawer.shape.interfaces.Deletable;
 import spiderdrawer.shape.interfaces.Drawable;
+import spiderdrawer.shape.interfaces.Movable;
 import spiderdrawer.shape.interfaces.Shape;
 
 
@@ -16,8 +17,10 @@ public class Shading implements Deletable {
 	/*
 	 *  included\excluded
 	 */
+	private ArrayList<Shape> shapeList;
 	MultiContainer<Circle, Shading> included;
 	ArrayList<Circle> excluded;
+	Freeform freeform;
 	
 	public Shading() {
 	}
@@ -26,29 +29,21 @@ public class Shading implements Deletable {
 		included = new MultiContainer<Circle, Shading>(this);
 	}
 	
-	public static Shading create(Freeform freeform, Shape[] shapes) {
+	public static Shading create(Freeform freeform, ArrayList<Shape> shapeList) {
 		Shading shading = new Shading();
 		shading.createContainers();
-		shading.compute(freeform, shapes);
+		shading.freeform = freeform;
+		shading.shapeList = shapeList;
+		shading.compute();
 		return shading;
 	}
 	
 	
-	private void compute(Freeform freeform, Shape[] shapes) {
-		Circle[] circles = circleArray(shapes);
+	public void compute() {
+		Circle[] circles = Arrays.circleArray(shapeList);
 		computeIncluded(freeform, circles);
 		excluded = computeExcluded(freeform, circles);
 	}
-	
-	private static Circle[] circleArray(Shape[] shapes) {
-		ArrayList<Circle> circleList = new ArrayList<Circle>();
-		for (int i = 0; i < shapes.length; i++) {
-			if (shapes[i] instanceof Circle) {
-				circleList.add((Circle) shapes[i]);
-			}
-		}
-		return circleList.toArray(new Circle[0]);
- 	}
 	
 	public String asString() throws EmptyContainerException {
 		String result = "([";
@@ -102,7 +97,7 @@ public class Shading implements Deletable {
 		
 		if (included != null) {
 			for (int i = 0; i < included.size(); i++) {
-				if (!included.get(i).intersects(line))
+				if (!included.get(i).contains(line))
 					return false;
 			}
 		}

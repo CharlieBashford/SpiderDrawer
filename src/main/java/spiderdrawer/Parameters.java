@@ -19,12 +19,18 @@ public class Parameters {
 	public final static int MIN_CIRCLE_RADIUS = 30;
 	
 	public final static int MAX_TEXT_WIDTH = 60;
-	public final static int MAX_TEXT_HEIGHT = 60;
+	public final static int MAX_TEXT_HEIGHT = 100;
+	
+	public final static int MAX_CONNECTIVE_WIDTH = 100;
+	public final static int MAX_CONNECTIVE_HEIGHT = 50;
 	
 	public final static int FREEFORM_OVERLAP_DIST = 10;
 	
 	public final static int FONT_SIZE = 20;
 	public final static int CONNECTIVE_FONT_SIZE = 40;
+	
+	
+	public final static int MAX_LETTER_I_LEN = 30;
 		
 	public final static float DIST_LINE_MOVE_END = 0.15f;
 	public final static int DIST_LINE_MOVE_END_MIN = 15;

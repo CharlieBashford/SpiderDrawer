@@ -19,7 +19,7 @@ public class Point implements Drawable, Movable, Deletable {
 
 	int x;
 	int y;
-	float time;
+	long time;
 	Line line1;
 	boolean line1Start;
 	Line line2;
@@ -299,12 +299,20 @@ public class Point implements Drawable, Movable, Deletable {
 				tempSpider.remove();
 			} else if (line1 != null && line1.spider.get() != null && !line1.spider.get().equals(spider.get())) { //line2.spider == null
 				Spider tempSpider = spider.get();
-				line1.spider.get().add(this);
+				if (spider.get() == null) {
+					line1.spider.get().add(this);
+				} else {
+					line1.spider.get().add(spider.get());
+				}
 				if (tempSpider != null)
 					tempSpider.remove();
 			} else if (line2 != null && line2.spider.get() != null && !line2.spider.get().equals(spider.get())) { //line1.spider == null
 				Spider tempSpider = spider.get();
-				line2.spider.get().add(this);
+				if (spider.get() == null) {
+					line2.spider.get().add(this);
+				} else {
+					line2.spider.get().add(spider.get());
+				}
 				if (tempSpider != null)
 					tempSpider.remove();
 			}

@@ -54,6 +54,7 @@ public class Line implements Drawable, Movable, Deletable {
 		return create(start.x, start.y, end.x, end.y, shapeList);
 	}
 	
+	
 	public static Line create(Freeform freeform, ArrayList<Shape> shapeList) {
 		return create(freeform.points.get(0), freeform.points.get(freeform.points.size() - 1), shapeList);
 	}
@@ -182,12 +183,20 @@ public class Line implements Drawable, Movable, Deletable {
 				tempSpider.remove();
 			} else if (startSet && start.spider.get() != null && !start.spider.get().equals(spider.get())) { //line2.spider == null
 				Spider tempSpider = spider.get();
-				start.spider.get().add(this);
+				if (spider.get() == null) {
+					start.spider.get().add(this);
+				} else {
+					start.spider.get().add(spider.get());
+				}
 				if (tempSpider != null)
 					start.spider.get().add(tempSpider);
 			} else if (endSet && end.spider.get() != null && !end.spider.get().equals(spider.get())) { //line2.spider == null
 				Spider tempSpider = spider.get();
-				end.spider.get().add(this);
+				if (spider.get() == null) {
+					end.spider.get().add(this);
+				} else {
+					end.spider.get().add(spider.get());
+				}
 				if (tempSpider != null)
 					end.spider.get().add(tempSpider);
 			}
@@ -417,6 +426,10 @@ public class Line implements Drawable, Movable, Deletable {
 	
 	public double boundaryDistance(Point p) {
 		return distance(p);
+	}
+	
+	public boolean isVertical() {
+		return ((double)Math.abs(start.y - end.y)/(double)Math.abs(start.x - end.x) > 3);
 	}
 	
 	protected double distanceAlongLine(Point p) {

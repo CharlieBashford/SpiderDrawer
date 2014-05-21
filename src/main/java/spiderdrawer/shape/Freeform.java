@@ -2,6 +2,7 @@ package spiderdrawer.shape;
 
 import java.awt.Graphics2D;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -191,5 +192,13 @@ public class Freeform implements Drawable, Deletable {
 	@Override
 	public void remove() {
 		removed = true;
+	}
+	
+	public boolean isLast(Freeform[] freeforms) {
+		for (int i = 0; i < freeforms.length; i++) {
+			if (freeforms[i].points.get(0).time > points.get(0).time)
+				return false;
+		}
+		return true;
 	}
 }

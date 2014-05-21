@@ -26,9 +26,9 @@ public class RataRecognizer {
     private WekaClassifier classifier = null;
 
     public RataRecognizer(String file) {
-        InputStream stream = null;
+       InputStream stream = null;
         try {
-        	stream = new FileInputStream(file);
+        	stream = getClass().getResourceAsStream(file);
 			classifier = new WekaClassifier(stream);
 		} catch (ClassNotFoundException | IOException e1) {
 			e1.printStackTrace();

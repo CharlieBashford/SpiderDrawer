@@ -133,7 +133,7 @@ public class Box implements Drawable, Movable, Deletable {
 	}
 	
 	public boolean completeConnectives() {
-		if (innerConnectives == null || innerConnectives.size() == 0)
+		if (innerConnectives.size() == 0)
 			return innerBoxes.isEmpty();
 		int numBoxes = 0;
 		for (int i = 0; i < innerConnectives.size(); i++) {
@@ -157,7 +157,6 @@ public class Box implements Drawable, Movable, Deletable {
 	}
 	
 	public String spidersAsString() {
-		letter = 'S';
 		String result = "[";
 		if (spiders != null) {
 			for (int i = 0; i < spiders.size(); i++) {
@@ -197,19 +196,23 @@ public class Box implements Drawable, Movable, Deletable {
 	}
 	
 	public String zonesAsString() {
-		String result = "";
+		StringBuilder result = new StringBuilder();
+		result.append('[');
 		ArrayList<Circle> found = new ArrayList<Circle>();
 		ArrayList<Circle> done = new ArrayList<Circle>();
 		for (int i = 0; i < circles.size(); i++) {
 			found.add(circles.get(i));
-			circleOverlaps(found, done);
+			circleOverlaps(result, found, done);
 			found.clear();
 			done.add(circles.get(i));
 		}
-		return result;
+		if (result.length() > 1)
+			result.delete(result.length()-2, result.length());
+		result.append(']');
+		return result.toString();
 	}
 	
-	public void circleOverlaps(ArrayList<Circle> found, ArrayList<Circle> done) {
+	public void circleOverlaps(StringBuilder result, ArrayList<Circle> found, ArrayList<Circle> done) {
 		if (found.size() == 0)
 			return;
 		Circle circle = found.get(0);
@@ -227,21 +230,24 @@ public class Box implements Drawable, Movable, Deletable {
 					overlapsAll = false;
 			}
 			if (overlapsAll) {
-				ArrayList<Circle> foundClone = (ArrayList<Circle>) found.clone();
-				foundClone.add(newCircle);
-				circleOverlaps(foundClone, done);
+				found.add(newCircle);
+				circleOverlaps(result, found, done);
+				found.remove(newCircle);
 				done.add(newCircle);
 				added.add(newCircle);
 			}
 		}
 		
 		if (!overlapsAll) {
-			for (int i = 0; i < found.size(); i++)
-				System.out.print(found.get(i).label.get().letter + ", ");
-			System.out.print("- ");
-			for (int i = 0; i < done.size(); i++)
-				System.out.print(done.get(i).label.get().letter + ", ");
-			System.out.println("");
+			if (found.size() > 1) {
+				result.append("([");
+				for (int i = 0; i < found.size(); i++) {
+					result.append("\"" + found.get(i).label.get().letter + "\"");
+					if (i != found.size()-1)
+						result.append(", ");
+				}
+				result.append("],[]), ");
+			}
 		}
 		done.removeAll(added);
 	}
@@ -264,8 +270,8 @@ public class Box implements Drawable, Movable, Deletable {
 	    			return "PrimarySD { "
 	    					+ "spiders = " + spidersAsString() + ", "
 	    					+ "habitats = " +  habitatsAsString() + ", "
-	    					+ "sh_zones = " + shadingsAsString() + ", "
-	    					+ "present_zones = " + zonesAsString() + ", "
+	    					+ "sh_zones = " + shadingsAsString() + " "
+	    					//+ "present_zones = " + zonesAsString() + " "
 	    					+ "}";
 	    		}
 	    	} else {
@@ -294,19 +300,17 @@ public class Box implements Drawable, Movable, Deletable {
 			topLeft.move(from, to);
 			//if ((overlapCircles == null || overlapCircles.size() == 0) && (overlapBoxes == null || overlapBoxes.size() == 0) && (overlapLines == null || overlapLines.size() == 0)) {
 				if (innerBoxes == null || innerBoxes.size() == 0) {
-					if (circles != null) {
-						for (int i = 0; i < circles.size(); i++) {
-							circles.get(i).move(from, to, true);
-							circles.get(i).recompute(false);
-						}
+					for (int i = 0; i < circles.size(); i++) {
+						circles.get(i).move(from, to, true);
 					}
-					if (spiders != null) {
-						for (int i = 0; i < spiders.size(); i++) {
-							spiders.get(i).move(from, to);
-						}
-						for (int i = 0; i < spiders.size(); i++) {
-							spiders.get(i).recompute(false);
-						}
+					for (int i = 0; i < circles.size(); i++) {
+						circles.get(i).recompute(false);
+					}
+					for (int i = 0; i < spiders.size(); i++) {
+						spiders.get(i).move(from, to);
+					}
+					for (int i = 0; i < spiders.size(); i++) {
+						spiders.get(i).recompute(false);
 					}
 				}
 				if (circles == null || circles.size() == 0) {
@@ -367,7 +371,7 @@ public class Box implements Drawable, Movable, Deletable {
 		innerBoxes.removeAll();
 		outerBoxes.removeAll();
 		for (int i = 0; i < boxes.length; i++) {
-			if (this.contains(boxes[i])) {
+			if (this.contains(boxes[i]) && !innerBoxesContains(boxes[i])) {
 				innerBoxes.add(boxes[i], boxes[i].outerBoxes);
 			}
 			if (boxes[i].contains(this)) {
@@ -397,7 +401,14 @@ public class Box implements Drawable, Movable, Deletable {
 		for (int i = 0; i < circles.length; i++) {
 			if (this.contains(circles[i]) && !this.innerBoxesContains(circles[i])) {
 				this.circles.add(circles[i], circles[i].boxes);
+				removeOuterBoxes(circles[i]);
 			}
+		}
+	}
+	
+	private void removeOuterBoxes(Circle circle) {
+		for (int i = 0; i < outerBoxes.size(); i++) {
+			outerBoxes.get(i).circles.remove(circle);
 		}
 	}
 	
@@ -484,29 +495,39 @@ public class Box implements Drawable, Movable, Deletable {
 		return false;
 	}
 	
-	protected boolean innerBoxesContains(Circle circle) {
+	protected boolean innerBoxesContains(Box box) {
 		if (innerBoxes != null) {
 			for (int i = 0; i < innerBoxes.size(); i++) {
-				if (innerBoxes.get(i).contains(circle)) {
+				if (innerBoxes.get(i).contains(box)) {
 					return true;
 				}
+			}
+		}
+		return false;
+	}
+	
+	
+	protected boolean innerBoxesContains(Circle circle) {
+		for (int i = 0; i < innerBoxes.size(); i++) {
+			if (innerBoxes.get(i).contains(circle)) {
+				return true;
 			}
 		}
 		return false;
 	}
 	
 	protected boolean innerBoxesContains(Label label) {
-		if (innerBoxes != null) {
-			for (int i = 0; i < innerBoxes.size(); i++) {
-				if (innerBoxes.get(i).contains(label)) {
-					return true;
-				}
+		for (int i = 0; i < innerBoxes.size(); i++) {
+			if (innerBoxes.get(i).contains(label)) {
+				return true;
 			}
 		}
 		return false;
 	}
 	
 	private void computeInnerConnectives(Connective[] connectives) {
+		for (int i = 0; i < innerConnectives.size(); i++)
+			innerConnectives.get(i).computeOuterBoxes(Arrays.boxArray(shapeList));
 		innerConnectives.removeAll();
 		for (int i = 0; i < connectives.length; i++) {
 			if (this.contains(connectives[i]) && !innerBoxesContains(connectives[i])) {
@@ -767,9 +788,6 @@ public class Box implements Drawable, Movable, Deletable {
 		lines.removeAll();
 		overlapLines.removeAll();
 		connective.set(null, null);
-		for (int i = innerConnectives.size()-1; i >= 0; i--)
-			innerConnectives.get(i).recompute(false);
-		innerConnectives.removeAll();
 		innerBoxes.removeAll();
 		for (int i = labels.size()-1; i >= 0; i--)
 			labels.get(i).recompute(false);
@@ -783,6 +801,9 @@ public class Box implements Drawable, Movable, Deletable {
 		outerBoxes.removeAll();	
 		if (outerBox != null)
 			outerBox.recompute(false);
+		for (int i = innerConnectives.size()-1; i >= 0; i--)
+			innerConnectives.get(i).recompute(false);
+		innerConnectives.removeAll();
 		overlapBoxes.removeAll();
 		
 		for (int i = 0; i < spiders.size(); i++) {

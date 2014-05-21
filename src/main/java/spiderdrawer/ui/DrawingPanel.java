@@ -12,10 +12,13 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 
+import javax.swing.JDialog;
+import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
 import spiderdrawer.Action;
+import spiderdrawer.ActionManager;
 import spiderdrawer.exception.EmptyContainerException;
 import spiderdrawer.exception.InvalidShapeException;
 import spiderdrawer.recognizer.RataRecognizer;
@@ -36,7 +39,7 @@ import spiderdrawer.shape.interfaces.Drawable;
 import spiderdrawer.shape.interfaces.Movable;
 import spiderdrawer.shape.interfaces.Shape;
 import static spiderdrawer.Parameters.LETTER_RECOGNITION_WAIT;
-import static spiderdrawer.Parameters.FREEFORM_OVERLAP_DIST;
+import static spiderdrawer.Parameters.MAX_LETTER_I_LEN;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
@@ -52,9 +55,6 @@ public class DrawingPanel extends JPanel {
     
     private final ArrayList<Shape> shapeList = new ArrayList<Shape>();
     private Freeform currentFreeform;
-    private boolean recognition;
-    private boolean shadingRecognition;
-    private boolean connectiveRecognition;
     private SpiderRecognizer spiderRecognizer;
     private RataRecognizer rataRecognizer;
     private TessRecognizer tessRecognizer;
@@ -62,23 +62,23 @@ public class DrawingPanel extends JPanel {
     private Point from = null;
     private Point originalFrom = null;
     private Box drawingBox;
-    private Action lastAction;
+    private Action currentAction;
+    private boolean deleted = false;
+    private ActionManager actionManager = new ActionManager();
+    private final MainForm mainForm;
     
     
     /**
      * Creates new form DrawFrame
      */
-    public DrawingPanel() {
+    public DrawingPanel(final MainForm mainForm) {
+    	this.mainForm = mainForm;
         initComponents();
-        lastAction = new Action(shapeList);
         spiderRecognizer = new SpiderRecognizer(shapeList);
-        rataRecognizer = new RataRecognizer("lib/test10.model");
+        rataRecognizer = new RataRecognizer("/lib/test10.model");
         tessRecognizer = new TessRecognizer();
         drawingBox = Box.create(0, 0, getWidth()-1, getHeight()-1, shapeList);
         shapeList.add(drawingBox);
-        recognition = true;
-        shadingRecognition = false;
-        connectiveRecognition = false;
         addComponentListener(new ComponentAdapter() {
 
             @Override
@@ -91,11 +91,14 @@ public class DrawingPanel extends JPanel {
          });
         addMouseListener(new MouseAdapter() {
             public void mousePressed(MouseEvent e) {
+            	currentAction = new Action(shapeList);
+            	System.out.println("currentAction being created: " + currentAction);
 	        	from = new Point(e.getX(), e.getY());
 	        	originalFrom = from;
+	        	deleted = false;
             	if (SwingUtilities.isRightMouseButton(e)) {
-            		System.out.println("Right clicking...");
-            		lastAction.setDelete();
+            		System.out.println("Mouse Down: Right clicking...");
+            		currentAction.setDelete();
             		return;
             	}
 	        	double minDist = Double.MAX_VALUE;
@@ -121,8 +124,10 @@ public class DrawingPanel extends JPanel {
             }
             
             public void mouseReleased(MouseEvent e) {
+            	try {
             	if (SwingUtilities.isRightMouseButton(e)) {
-            		//System.out.println("Right click while release...");
+            		if (from == null)
+            			return;
             		Line line = new Line(from, new Point(e.getX(), e.getY()));
             		for (int i = 0; i < shapeList.size(); i++) {
             			if (shapeList.get(i) instanceof Deletable) {
@@ -130,87 +135,91 @@ public class DrawingPanel extends JPanel {
             				if (delShape.equals(drawingBox)) {
     	        				continue;
     	        			}
-	            			if (delShape.intersects(line)) {
+	            			if (delShape.intersects(line)  && !(delShape instanceof Shading)) {
 	            				shapeList.remove(i);
 	            				delShape.remove();
-	            				lastAction.add(delShape);
+	            				currentAction.add(delShape);
+	            				System.out.println("Released: deleted " + delShape);
 	            			}
             			}
             		}
+            		if (deleted == false) {
+	            		for (int i = 0; i < shapeList.size(); i++) {
+	            			if (shapeList.get(i) instanceof Shading) {
+	            				Shading shading = (Shading) shapeList.get(i);
+	            				if (shading.intersects(line)) {
+		            				shapeList.remove(i);
+		            				shading.remove();
+		            				currentAction.add(shading);
+	            				}
+	            			}
+	            		}
+            		}
+                	actionManager.add(currentAction);
+            		repaint();
             	} else {
 	            	if (toMove != null) {
 	            		toMove.move(from, new Point(e.getX(), e.getY()));
 	            		toMove.recompute(false);
-	            		lastAction.setMove(toMove, originalFrom, new Point(e.getX(), e.getY()));
+	            		currentAction.setMove(toMove, originalFrom, new Point(e.getX(), e.getY()));
+                    	actionManager.add(currentAction);
 	            		toMove = null;
 	            		from = null;
 	            		repaint();
 	            		return;
 	            	}
-	            	
-	            	if (recognition || connectiveRecognition) {
-			        	Thread timeThread = new Thread() {
-			                public void run() {
-			            		Freeform initial = currentFreeform;
-			                    try {
-			                        Thread.sleep(LETTER_RECOGNITION_WAIT);
-			                    } catch (InterruptedException e) {
-			                        e.printStackTrace();
-			                    }
-			                    if (initial.isRemoved())
-			                    	return;
-			                    Shape shape = null;
-			                    if (recognition && initial != null && (initial.equals(currentFreeform) || !initial.overlaps(currentFreeform, FREEFORM_OVERLAP_DIST))) {
-			                    	if (!initial.getOverlappingFreeforms(Arrays.freeformList(shapeList)).isEmpty()) {
-			                    		shape = checkText(initial, true, true);
-			                    	} else {
-				                    	String resultingClass = rataRecognizer.classify(initial);
-				                    	System.out.println("Result:" + resultingClass);
-				                    	shapeList.remove(initial);
-				                    	switch(resultingClass) {
-				                    		case "Text": shape = checkText(initial, false, true); break;
-				                    		case "Box": shape = Box.create(initial, shapeList); break;
-				                    		case "Line": shape = Line.create(initial, shapeList); break;
-				                    		case "Circle": shape = Circle.create(initial, shapeList); break;
-				                    		case "Dot": shape = Point.create(initial, shapeList); break;
-				                    		case "Shading": shape = Shading.create(initial, shapeList.toArray(new Shape[0])); break;
-				                    		case "Connective": shape = checkText(initial, true, false); break;
-				                    	}
-				                    	
+		        	Thread timeThread = new Thread() {
+		                public void run() {
+		            		Freeform initial = currentFreeform;
+		                    try {
+		                        Thread.sleep(LETTER_RECOGNITION_WAIT);
+		                    } catch (InterruptedException e) {
+		                        e.printStackTrace();
+		                    }
+		                    if (initial.isRemoved())
+		                    	return;
+		                    Shape shape = null;
+		                    ArrayList<Freeform> overlapFreeforms = initial.getOverlappingFreeforms(Arrays.freeformList(shapeList));
+	                    	overlapFreeforms.add(initial);
+		                    boolean textSize = SpiderRecognizer.isTextSize(overlapFreeforms.toArray(new Freeform[0])) || SpiderRecognizer.isConnectiveSize(overlapFreeforms.toArray(new Freeform[0]));
+		                    System.out.println(initial + ": textSize:" + textSize + " num " + overlapFreeforms.size() + " isLast" + initial.isLast(overlapFreeforms.toArray(new Freeform[0])));
+		                    if (initial != null && (initial.equals(currentFreeform) || !textSize || initial.isLast(overlapFreeforms.toArray(new Freeform[0])))) {
+		                    	if (overlapFreeforms.size() != 1 && textSize) {
+		                    		shape = checkText(initial, true, true);
+		                    	} else {
+			                    	String resultingClass = rataRecognizer.classify(initial);
+			                    	System.out.println("Result:" + resultingClass);
+			                    	shapeList.remove(initial);
+			                    	switch(resultingClass) {
+			                    		case "Text": shape = checkText(initial, false, true); break;
+			                    		case "Box": shape = Box.create(initial, shapeList); break;
+			                    		case "Line":  shape = SpiderRecognizer.checkLine(initial, shapeList); break;
+			                    		case "Circle": shape = Circle.create(initial, shapeList); break;
+			                    		case "Dot": shape = Point.create(initial, shapeList); break;
+			                    		case "Shading": shape = Shading.create(initial, shapeList); break;
+			                    		case "Connective": shape = checkText(initial, true, false); break;
 			                    	}
-			                    } else if (connectiveRecognition && initial != null && initial.equals(currentFreeform)) {
-			                    	shape = checkText(initial, true, true);
-			                    }
-			                    if (shape != null) {
-			                    	if (shape instanceof Line) {
-			                    		double len = ((Line) shape).length();
-			                    		if (len < 1) {
-			                    			System.out.println("Line is too short: deleting");
-			                    			repaint();
-			                    			return;
-			                    		} else if (len < 10) {
-			                    			System.out.println("Line is too short: converting to Point");
-			                    			shape = Point.create(initial, shapeList);
-			                    		}
-			                    	}
-			                    	if (!initial.isRemoved())
-			                    		 shapeList.add(shape);
-			                    	lastAction.setCreate(shape);
-			                    }
-			                    repaint();
-			                }
-			            };
-			
-			            timeThread.setDaemon(true);
-			            timeThread.start();
-	            	} else if (shadingRecognition) {
-	            		if (currentFreeform != null) {
-	            			shapeList.remove(currentFreeform);
-	            			shapeList.add(Shading.create(currentFreeform, shapeList.toArray(new Shape[0])));
-	            		}
-	            		currentFreeform = null;
-	            		repaint();
-	            	}
+		                    	}
+		                    }
+		                    if (shape != null) {
+		                    	if (!initial.isRemoved())
+		                    		 shapeList.add(shape);
+		                    	Action action = new Action(shapeList);
+		                    	action.setCreate(shape);
+		                    	actionManager.add(action);
+		                    }
+		                    repaint();
+		                    mainForm.checkUndoRedo();
+		                }
+		            };
+		
+		            timeThread.setDaemon(true);
+		            timeThread.start();
+		            
+            	}
+            	mainForm.checkUndoRedo();
+            	} catch (Exception ex) {
+            		ex.printStackTrace();
             	}
             }
         });
@@ -218,7 +227,10 @@ public class DrawingPanel extends JPanel {
         addMouseMotionListener(new MouseAdapter() {
             public void mouseDragged(MouseEvent e) {
             	if (SwingUtilities.isRightMouseButton(e)) {
-            		//System.out.println("Right click while dragging...");
+            		if (!currentAction.isDelete())
+            			currentAction.setDelete();
+            		if (from == null)
+            			return;
             		Point to = new Point(e.getX(), e.getY());
             		Line line = new Line(from, to);
             		for (int i = 0; i < shapeList.size(); i++) {
@@ -227,10 +239,11 @@ public class DrawingPanel extends JPanel {
             				if (delShape.equals(drawingBox)) {
     	        				continue;
     	        			}
-	            			if (delShape.intersects(line)) {
+	            			if (delShape.intersects(line) && !(delShape instanceof Shading)) {
 	            				shapeList.remove(i);
 	            				delShape.remove();
-	            				lastAction.add(delShape);
+	            				currentAction.add(delShape);
+	            				deleted = true;
 	            			}
             			}
             		}
@@ -314,51 +327,30 @@ public class DrawingPanel extends JPanel {
     	repaint();
     }
     
-    public void turnOffRecognition() {
-    	recognition = false;
-    }
-    
-    public void turnOnRecognition() {
-    	recognition = true;
-    }
-    
-    public boolean isRecognition() {
-    	return recognition;
-    }
-    
-    public void turnOffShadingRecognition() {
-    	shadingRecognition = false;
-    }
-    
-    public void turnOnShadingRecognition() {
-    	shadingRecognition = true;
-    }
-    
-    public boolean isShadingRecognition() {
-    	return shadingRecognition;
-    }
-    
-    public void turnOffConnectiveRecognition() {
-    	connectiveRecognition = false;
-    }
-    
-    public void turnOnConnectiveRecognition() {
-    	connectiveRecognition = true;
-    }
-    
-    public boolean isConnectiveRecognition() {
-    	return connectiveRecognition;
-    }
-    
     public void clearDrawable() {
     	shapeList.clear();
+    	actionManager = new ActionManager();
+    	mainForm.checkUndoRedo();
     	drawingBox = Box.create(0, 0, getWidth()-1, getHeight()-1, shapeList);
     	shapeList.add(drawingBox);
     }
     
     public void undo() {
-    	lastAction.undo();
+    	actionManager.undo();
     	repaint();
+    }
+    
+    public void redo() {
+    	actionManager.redo();
+    	repaint();
+    }
+    
+    public boolean canUndo() {
+    	return actionManager.canUndo();
+    }
+    
+    public boolean canRedo() {
+    	return actionManager.canRedo();
     }
     
     public String drawablesAsString() {
@@ -442,47 +434,24 @@ public class DrawingPanel extends JPanel {
     		connective = false;
     	}
     	
-    	Rectangle rect = surroundingRectangle(freeforms);
+    	Rectangle rect = SpiderRecognizer.surroundingRectangle(freeforms);
 		Character character = (connective)? ((letter)? tessRecognizer.classifyText(freeforms) : tessRecognizer.classifyConnective(freeforms)) : tessRecognizer.classifyLetter(freeforms);
+		if (!freeform.isLast(freeforms)) {
+			System.out.println("More being drawn...");
+			return null;
+		}
+		Shape shape = null;
 		if (character != null) {
 			Point center = new Point((int)rect.getCenterX(), (int)rect.getCenterY());
-			Shape shape;
 			if (Character.isAlphabetic((int) character))
 				shape = Label.create(character, center, shapeList);
 			else 
 				shape = Connective.create(Logical.create(character), center, shapeList);
-			for (int i = 0; i < freeforms.length; i++)
-				shapeList.remove(freeforms[i]);
-			return shape;
 		}
-		return null;
+		for (int i = 0; i < freeforms.length; i++)
+			shapeList.remove(freeforms[i]);
+		return shape;
     }
-    
-    public static Rectangle surroundingRectangle(Freeform[] freeforms) {
-		int minX = Integer.MAX_VALUE;
-    	int minY = Integer.MAX_VALUE;
-    	int maxX = Integer.MIN_VALUE;
-    	int maxY = Integer.MIN_VALUE;
-    	for (int i = 0; i < freeforms.length; i++) {
-    		int currentMinX = freeforms[i].minX();
-    		if (currentMinX < minX) {
-    			minX = currentMinX; 
-    		}
-    		int currentMinY = freeforms[i].minY();
-    		if (currentMinY < minY) {
-    			minY = currentMinY; 
-    		}
-    		int currentMaxX = freeforms[i].maxX();
-    		if (currentMaxX > maxX) {	
-    			maxX = currentMaxX; 
-    		}
-    		int currentMaxY = freeforms[i].maxY();
-    		if (currentMaxY > maxY) {
-    			maxY = currentMaxY; 
-    		}
-    	}    
-    	return new Rectangle(minX, minY, maxX - minX, maxY - minY);
-	}
     
     @Override
     public void paintComponent(Graphics g) {
@@ -497,9 +466,15 @@ public class DrawingPanel extends JPanel {
         	}
         }
         for (int i = 0; i < shapeList.size(); i++) {
-        	if (shapeList.get(i) instanceof Drawable && !(shapeList.get(i) instanceof Circle)) {
+        	if (shapeList.get(i) instanceof Line) {
+        		Line line = (Line) shapeList.get(i);
+        		line.draw(g2);
+        	}
+        }
+        for (int i = 0; i < shapeList.size(); i++) {
+        	if (shapeList.get(i) instanceof Drawable && !(shapeList.get(i) instanceof Circle) && !(shapeList.get(i) instanceof Line)) {
         		Drawable drawable = (Drawable) shapeList.get(i);
-        		if (drawable.equals(drawingBox)) {
+        		if (drawable.equals(drawingBox)) {	
         			if (drawingBox.isValid())
         			continue;
         		}

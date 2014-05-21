@@ -93,6 +93,10 @@ public class Circle implements Drawable, Movable, Deletable {
 		return true;
 	}
 	
+	protected boolean contains(Line line) {
+		return (contains(line.start) && contains(line.end));
+	}
+	
 	protected boolean contains(Point point) {
 		return (center.distance(point) < radius);
 	}

@@ -1,6 +1,10 @@
 package spiderdrawer.ui;
 
 import javax.imageio.ImageIO;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.Box.Filler;
+import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
@@ -10,11 +14,18 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
+import javax.swing.Timer;
+import javax.swing.border.Border;
+import javax.swing.event.MenuEvent;
+import javax.swing.event.MenuListener;
 
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
 import net.sourceforge.tess4j.TessAPI.TessPageSegMode;
 
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.FileDialog;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -38,7 +49,9 @@ public class MainForm extends JDialog {
 	
 	private DrawingPanel drawingPanel;
     private MessageBox messageBox = null;
-
+    final JMenuItem undoMenuItem = new JMenuItem();
+    final JMenuItem redoMenuItem = new JMenuItem();
+    
 	
     /**
      * Creates new form MainForm
@@ -54,7 +67,10 @@ public class MainForm extends JDialog {
     }
     
     private void convertMenuItemClicked() {
-    	System.out.println(drawingPanel.textualRep());
+    	String textRep = drawingPanel.textualRep();
+    	System.out.println(textRep);
+    	if (isModal() && textRep != null)
+    		setVisible(false);
     }
     
     public String getSpiderDiagram() {
@@ -137,19 +153,6 @@ public class MainForm extends JDialog {
     	}	
     }
     
-    private void ocrMenuItemClicked() {
-    	Tesseract instance = Tesseract.getInstance();
-    	instance.setPageSegMode(TessPageSegMode.PSM_SINGLE_CHAR);
-    	try {
-            String result = instance.doOCR(drawingPanel.createImage());
-            if (result.length() > 0) {
-            	drawingPanel.addLabel(result.charAt(0));
-            }
-        } catch (TesseractException e) {
-            System.err.println(e.getMessage());
-        }
-    }
-    
     private void initComponents() {
         setSize(900, 650);
         setLocationRelativeTo(null);
@@ -163,7 +166,7 @@ public class MainForm extends JDialog {
     }
     
     private void addDrawingFrame() {
-    	drawingPanel = new DrawingPanel();
+    	drawingPanel = new DrawingPanel(this);
         this.setContentPane(drawingPanel);
     }
     
@@ -211,23 +214,26 @@ public class MainForm extends JDialog {
         });
         optionsMenu.add(clearMenuItem);
         
-        JMenuItem undoMenuItem = new JMenuItem();
+        
         undoMenuItem.setText("Undo");
+        undoMenuItem.setEnabled(false);
         undoMenuItem.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e) {
-				drawingPanel.undo();				
+				drawingPanel.undo();
+				checkUndoRedo();
 			}
         });
         optionsMenu.add(undoMenuItem);
         
-        JMenuItem convertMenuItem = new JMenuItem();
-        convertMenuItem.setText("Convert to Text Rep");
-        convertMenuItem.addActionListener(new ActionListener(){
+        redoMenuItem.setText("Redo");
+        redoMenuItem.setEnabled(false);
+        redoMenuItem.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e) {
-				convertMenuItemClicked();				
+				drawingPanel.redo();
+				checkUndoRedo();
 			}
         });
-        optionsMenu.add(convertMenuItem);
+        optionsMenu.add(redoMenuItem);
         
         
         /*Test menu starts */
@@ -289,75 +295,32 @@ public class MainForm extends JDialog {
         });
         testMenu.add(connectiveMenuItem);
         
-        JMenuItem ocrMenuItem = new JMenuItem();
-        ocrMenuItem.setText("OCR");
-        ocrMenuItem.addActionListener(new ActionListener(){
-			public void actionPerformed(ActionEvent e) {
-				ocrMenuItemClicked();					
-			}
-        });
-        testMenu.add(ocrMenuItem);
+        /* Convert Menu starts */
         
-        final JMenuItem recognitionMenuItem = new JMenuItem();
-        if (drawingPanel.isRecognition())
-        	recognitionMenuItem.setText("Recognition Off");
-        else
-        	recognitionMenuItem.setText("Recognition On");
-        recognitionMenuItem.addActionListener(new ActionListener(){
-			public void actionPerformed(ActionEvent e) {
-				if (drawingPanel.isRecognition()) {
-					drawingPanel.turnOffRecognition();
-		        	recognitionMenuItem.setText("Recognition On");
-				} else {
-					drawingPanel.turnOnRecognition();
-		        	recognitionMenuItem.setText("Recognition Off");	
-				}
+        JMenuItem convertMenuItem = new JMenuItem();
+        convertMenuItem.setMinimumSize(new Dimension(80,0));
+        convertMenuItem.setPreferredSize(new Dimension(80,0));
+        convertMenuItem.setMaximumSize(new Dimension(80, Short.MAX_VALUE));
+        convertMenuItem.setText("Done");
+        convertMenuItem.addActionListener(new ActionListener(){
+        	public void actionPerformed(ActionEvent e) {
+				convertMenuItemClicked();	
 			}
         });
-        testMenu.add(recognitionMenuItem);
-        
-        final JMenuItem shadingRecognitionMenuItem = new JMenuItem();
-        if (drawingPanel.isShadingRecognition())
-        	shadingRecognitionMenuItem.setText("Shading Off");
-        else
-        	shadingRecognitionMenuItem.setText("Shading On");
-        shadingRecognitionMenuItem.addActionListener(new ActionListener(){
-			public void actionPerformed(ActionEvent e) {
-				if (drawingPanel.isShadingRecognition()) {
-					drawingPanel.turnOffShadingRecognition();
-					shadingRecognitionMenuItem.setText("Shading On");
-				} else {
-					drawingPanel.turnOnShadingRecognition();
-					shadingRecognitionMenuItem.setText("Shading Off");	
-				}
-			}
-        });
-        testMenu.add(shadingRecognitionMenuItem);
-        
-        final JMenuItem connectiveRecognitionMenuItem = new JMenuItem();
-        if (drawingPanel.isConnectiveRecognition())
-        	connectiveRecognitionMenuItem.setText("Connective Off");
-        else
-        	connectiveRecognitionMenuItem.setText("Connective On");
-        connectiveRecognitionMenuItem.addActionListener(new ActionListener(){
-			public void actionPerformed(ActionEvent e) {
-				if (drawingPanel.isConnectiveRecognition()) {
-					drawingPanel.turnOffConnectiveRecognition();
-					connectiveRecognitionMenuItem.setText("Connective On");
-				} else {
-					drawingPanel.turnOnConnectiveRecognition();
-					connectiveRecognitionMenuItem.setText("Connective Off");	
-				}
-			}
-        });
-        testMenu.add(connectiveRecognitionMenuItem);
+        menuBar.add(convertMenuItem);
+
+    }
+    
+    public void checkUndoRedo() {
+    	undoMenuItem.setEnabled(drawingPanel.canUndo());
+		redoMenuItem.setEnabled(drawingPanel.canRedo());
     }
     
     /**
      * @param args the command line arguments
      */
     public static void main(String args[]) {
-        new MainForm(null, true).setVisible(true);
+        new MainForm(null, false).setVisible(true);
     }
 
 
