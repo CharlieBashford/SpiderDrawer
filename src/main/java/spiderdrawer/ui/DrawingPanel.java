@@ -72,7 +72,7 @@ public class DrawingPanel extends JPanel {
     	this.mainForm = mainForm;
         initComponents();
         spiderRecognizer = new SpiderRecognizer(shapeList);
-        rataRecognizer = new RataRecognizer("/lib/test10.model");
+        rataRecognizer = new RataRecognizer("/lib/spider.model");
         tessRecognizer = new TessRecognizer();
         drawingBox = Box.create(0, 0, getWidth()-1, getHeight()-1, shapeList);
         shapeList.add(drawingBox);
