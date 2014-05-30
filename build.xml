@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- WARNING: Eclipse auto-generated file.
+              Any modifications will be overwritten.
+              To include a user specific buildfile here, simply create one in the same
+              directory with the processing instruction <?eclipse.ant.import?>
+              as the first entry and export the buildfile again. --><project basedir="." default="build" name="spiderdrawer">
+    <property environment="env"/>
+    <property name="ECLIPSE_HOME" value="../../../../Applications/eclipse"/>
+    <property name="junit.output.dir" value="junit"/>
+    <property name="debuglevel" value="source,lines,vars"/>
+    <property name="target" value="1.7"/>
+    <property name="source" value="1.7"/>
+    <path id="Persisted container [org.eclipse.m2e.MAVEN2_CLASSPATH_CONTAINER for project [spiderdrawer]].libraryclasspath"/>
+    <path id="JUnit 4.libraryclasspath">
+        <pathelement location="${ECLIPSE_HOME}/plugins/org.junit_4.11.0.v201303080030/junit.jar"/>
+        <pathelement location="${ECLIPSE_HOME}/plugins/org.hamcrest.core_1.3.0.v201303031735.jar"/>
+    </path>
+    <path id="Plug-in Dependencies.libraryclasspath"/>
+    <path id="spiderdrawer.classpath">
+        <pathelement location="target/classes"/>
+        <pathelement location="target/test-classes"/>
+        <path refid="Persisted container [org.eclipse.m2e.MAVEN2_CLASSPATH_CONTAINER for project [spiderdrawer]].libraryclasspath"/>
+        <pathelement location="lib/jai_imageio.jar"/>
+        <pathelement location="lib/jna.jar"/>
+        <pathelement location="lib/tess4j.jar"/>
+        <path refid="JUnit 4.libraryclasspath"/>
+        <pathelement location="../Rata Android/Android/trunk/libs/inkmllibj.jar"/>
+        <pathelement location="../Rata Android/Android/trunk/libs/recognizer.jar"/>
+        <pathelement location="../Rata Android/Android/trunk/libs/utils.jar"/>
+        <path refid="Plug-in Dependencies.libraryclasspath"/>
+    </path>
+    <target name="init">
+        <mkdir dir="target/classes"/>
+        <mkdir dir="target/test-classes"/>
+        <copy includeemptydirs="false" todir="target/classes">
+            <fileset dir="src/main/java">
+                <exclude name="**/*.java"/>
+                <exclude name="spiderdrawer/drawable/Line2.java"/>
+            </fileset>
+        </copy>
+        <copy includeemptydirs="false" todir="target/test-classes">
+            <fileset dir="src/test/java">
+                <exclude name="**/*.java"/>
+            </fileset>
+        </copy>
+    </target>
+    <target name="clean">
+        <delete dir="target/classes"/>
+        <delete dir="target/test-classes"/>
+    </target>
+    <target depends="clean" name="cleanall"/>
+    <target depends="build-subprojects,build-project" name="build"/>
+    <target name="build-subprojects"/>
+    <target depends="init" name="build-project">
+        <echo message="${ant.project.name}: ${ant.file}"/>
+        <javac debug="true" debuglevel="${debuglevel}" destdir="target/classes" includeantruntime="false" source="${source}" target="${target}">
+            <src path="src/main/java"/>
+            <exclude name="spiderdrawer/drawable/Line2.java"/>
+            <classpath refid="spiderdrawer.classpath"/>
+        </javac>
+        <javac debug="true" debuglevel="${debuglevel}" destdir="target/test-classes" includeantruntime="false" source="${source}" target="${target}">
+            <src path="src/test/java"/>
+            <classpath refid="spiderdrawer.classpath"/>
+        </javac>
+    </target>
+    <target description="Build all projects which reference this project. Useful to propagate changes." name="build-refprojects"/>
+    <target description="copy Eclipse compiler jars to ant lib directory" name="init-eclipse-compiler">
+        <copy todir="${ant.library.dir}">
+            <fileset dir="${ECLIPSE_HOME}/plugins" includes="org.eclipse.jdt.core_*.jar"/>
+        </copy>
+        <unzip dest="${ant.library.dir}">
+            <patternset includes="jdtCompilerAdapter.jar"/>
+            <fileset dir="${ECLIPSE_HOME}/plugins" includes="org.eclipse.jdt.core_*.jar"/>
+        </unzip>
+    </target>
+    <target description="compile project with Eclipse compiler" name="build-eclipse-compiler">
+        <property name="build.compiler" value="org.eclipse.jdt.core.JDTCompilerAdapter"/>
+        <antcall target="build"/>
+    </target>
+    <target name="FileChooserForm">
+        <java classname="spiderdrawer.ui.FileChooserForm" failonerror="true" fork="yes">
+            <classpath refid="spiderdrawer.classpath"/>
+        </java>
+    </target>
+    <target name="IntersectsTest">
+        <mkdir dir="${junit.output.dir}"/>
+        <junit fork="yes" printsummary="withOutAndErr">
+            <formatter type="xml"/>
+            <test name="spiderdrawer.IntersectsTest" todir="${junit.output.dir}"/>
+            <classpath refid="spiderdrawer.classpath"/>
+        </junit>
+    </target>
+    <target name="Main">
+        <java classname="spiderdrawer.Main" failonerror="true" fork="yes">
+            <jvmarg line="-Xdock:name=&quot;Spider Diagram&quot; -DTESSDATA_PREFIX=."/>
+            <classpath refid="spiderdrawer.classpath"/>
+        </java>
+    </target>
+    <target name="MainForm">
+        <java classname="spiderdrawer.ui.MainForm" failonerror="true" fork="yes">
+            <classpath refid="spiderdrawer.classpath"/>
+        </java>
+    </target>
+    <target name="OverlapsTest">
+        <mkdir dir="${junit.output.dir}"/>
+        <junit fork="yes" printsummary="withOutAndErr">
+            <formatter type="xml"/>
+            <test name="spiderdrawer.OverlapsTest" todir="${junit.output.dir}"/>
+            <classpath refid="spiderdrawer.classpath"/>
+        </junit>
+    </target>
+    <target name="OverlapsTest.secondOverlap">
+        <mkdir dir="${junit.output.dir}"/>
+        <junit fork="yes" printsummary="withOutAndErr">
+            <formatter type="xml"/>
+            <test name="spiderdrawer.OverlapsTest" todir="${junit.output.dir}"/>
+            <classpath refid="spiderdrawer.classpath"/>
+        </junit>
+    </target>
+    <target name="build-jar">
+		<jar destfile="spiderDrawer.jar"
+		     basedir="target/classes"
+		     includes="**">
+            <zipgroupfileset dir="lib" includes="*.jar"/>
+            <fileset dir="." includes="libtesseract.dylib" />
+            <fileset dir="." includes="win32-x86-64/libtesseract302.dll" />
+            <fileset dir="." includes="tessdata/**" />
+            <fileset dir="." includes="lib/spider.model" />
+		     <manifest>
+		      <attribute name="Main-Class" value="spiderdrawer.Main"/>
+		      <attribute name="Implementation-Vendor" value="Sun Microsystems, Inc."/>
+		      <attribute name="Implementation-Version" value="1.1/"/>
+		      <attribute name="Implementation-Title" value="com.sun.media.imageio"/>
+		      <attribute name="Extension-Name" value="com.sun.media.imageio"/>
+		     </manifest>
+		</jar>
+	</target>
+</project>
