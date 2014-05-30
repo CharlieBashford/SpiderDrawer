@@ -75,4 +75,14 @@ public class Arrays {
 		}
 		return pointList.toArray(new Point[0]);
  	}
+	
+	public static Shading[] shadingArray(ArrayList<Shape> shapeList) {
+		ArrayList<Shading> shadingList = new ArrayList<Shading>();
+		for (int i = 0; i < shapeList.size(); i++) {
+			if (shapeList.get(i) instanceof Shading) {
+				shadingList.add((Shading) shapeList.get(i));
+			}
+		}
+		return shadingList.toArray(new Shading[0]);
+ 	}
 }

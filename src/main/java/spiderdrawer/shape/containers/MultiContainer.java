@@ -59,6 +59,10 @@ public class MultiContainer<T,S> extends Container<T,S> {
 			remove(list.get(0));
 	}
 	
+	public ArrayList<T> list() {
+		return list;
+	}
+	
 	public T get(int index) {
 		return list.get(index);
 	}

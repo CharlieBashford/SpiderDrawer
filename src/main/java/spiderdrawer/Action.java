@@ -37,24 +37,20 @@ public class Action {
 		this.mShape = mShape;
 		this.from = from;
 		this.to = to;
-		System.out.println("Type set to Move" + this);
 	}
 	
 	public void setDelete() {
 		type = ActionType.DELETE;
 		this.deleted = new ArrayList<Deletable>();
-		System.out.println("Type set to Delete " + this);
 	}
 	
 	public void add(Deletable deleted) {
-		System.out.println("deleted :" + this.deleted + " " + this);
 		this.deleted.add(deleted);
 	}
 	
 	public void setCreate(Shape created) {
 		type = ActionType.CREATE;
 		this.created = created;
-		System.out.println("Type set to create" + this);
 	}
 	
 	public void undo() {
@@ -64,6 +60,7 @@ public class Action {
 			case MOVE: undoMove(); break;
 			case DELETE: undoDelete(); break;
 			case CREATE: undoCreate(); break;
+			default: break;
 		}
 		undid = true;
 		
@@ -76,6 +73,7 @@ public class Action {
 			case MOVE: redoMove(); break;
 			case DELETE: redoDelete(); break;
 			case CREATE: redoCreate(); break;
+			default: break;
 		}
 		undid = false;
 	}
@@ -86,9 +84,6 @@ public class Action {
 	}
 	
 	private void undoDelete() {
-		System.out.println("Undoing delete: " + this);
-		for (int i = 0; i < deleted.size(); i++)
-			System.out.println("deleted.get(" + i + "): " + deleted.get(i));
 		shapeList.addAll(deleted);
 		for (int i = 0; i < deleted.size(); i++)
 			if (deleted.get(i) instanceof Movable)

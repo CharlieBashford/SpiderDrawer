@@ -14,7 +14,6 @@ public class ActionManager {
 	public synchronized void add(Action action) {
 		while (actionList.size() > current) 
 			actionList.remove(actionList.size()-1);
-		System.out.println("Adding to Manager, action: " + action);
 		actionList.add(action);
 		current = actionList.size();
 	}

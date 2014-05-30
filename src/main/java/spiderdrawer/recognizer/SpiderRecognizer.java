@@ -54,19 +54,29 @@ public class SpiderRecognizer {
 	}
 	
 	public static boolean isTextSize(Freeform[] freeforms) {
+		return (isLetterSize(freeforms) || isConnectiveSize(freeforms)) && !isAnyDotSize(freeforms);
+	}
+	
+	public static boolean isAnyDotSize(Freeform[] freeforms) {
+		for (int i = 0; i < freeforms.length; i++) {
+			if (freeforms[i].isDotSize())
+				return true;
+		}	
+		return false;
+	}
+	
+	
+	
+	public static boolean isLetterSize(Freeform[] freeforms) {
 		Rectangle rect = surroundingRectangle(freeforms);
-		if (rect.width > MAX_TEXT_WIDTH)
-			return false;
-		if (rect.height > MAX_TEXT_HEIGHT)
+		if (rect.width > MAX_TEXT_WIDTH || rect.height > MAX_TEXT_HEIGHT)
 			return false;
 		return true;	
 	}
 	
 	public static boolean isConnectiveSize(Freeform[] freeforms) {
 		Rectangle rect = surroundingRectangle(freeforms);
-		if (rect.width > MAX_CONNECTIVE_WIDTH)
-			return false;
-		if (rect.height > MAX_CONNECTIVE_HEIGHT)
+		if (rect.width > MAX_CONNECTIVE_WIDTH || rect.height > MAX_CONNECTIVE_HEIGHT)
 			return false;
 		return true;
 	}

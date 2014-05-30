@@ -1,10 +1,7 @@
 package spiderdrawer.shape;
 
-import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Graphics2D;
-import java.awt.geom.Area;
-import java.awt.geom.Ellipse2D;
 import java.util.ArrayList;
 
 import spiderdrawer.shape.containers.MultiContainer;
@@ -24,7 +21,7 @@ public class Circle implements Drawable, Movable, Deletable {
 	boolean moveLabel;
 	MultiContainer<Point, Circle> points;
 	MultiContainer<Shading, Circle> shadings;
-	MultiContainer<Box, Circle> boxes;
+	public MultiContainer<Box, Circle> boxes;
 	MultiContainer<Box, Circle> innerBoxes;
 	MultiContainer<Box, Circle> overlapBoxes;
 	MultiContainer<Circle, Circle> overlapCircles;
@@ -154,25 +151,6 @@ public class Circle implements Drawable, Movable, Deletable {
 		
 	@Override
 	public void draw(Graphics2D g2) {
-		for (int i = 0; i < shadings.size(); i++) {
-			if (shadings.get(i).included != null && shadings.get(i).included.size() > 0 && shadings.get(i).included.get(0).equals(this)) {
-				g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.2f));
-		    	g2.setColor(Color.BLUE);
-				Area area = new Area(new Ellipse2D.Float(center.x-radius, center.y-radius, radius*2, radius*2));
-				for (int j = 1; j < shadings.get(i).included.size(); j++) {
-					Circle circle = shadings.get(i).included.get(j);
-					area.intersect(new Area(new Ellipse2D.Float(circle.center.x-circle.radius, circle.center.y-circle.radius, circle.radius*2, circle.radius*2)));
-				}
-				if (shadings.get(i).excluded != null) {
-					for (int j = 0; j < shadings.get(i).excluded.size(); j++) {
-						Circle circle = shadings.get(i).excluded.get(j);
-						area.subtract(new Area(new Ellipse2D.Float(circle.center.x-circle.radius, circle.center.y-circle.radius, circle.radius*2, circle.radius*2)));
-					}
-				}
-				g2.fill(area);
-			    g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1));
-			}
-		}
 		if (!isValid()) {
 			g2.setColor(Color.RED);
 		} else {
@@ -322,6 +300,10 @@ public class Circle implements Drawable, Movable, Deletable {
 			return true;
 		
 		return false;
+	}
+	
+	public boolean intersects(Freeform freeform) {
+		return freeform.intersects(this);
 	}
 	
 	public boolean intersects(Circle circle) {

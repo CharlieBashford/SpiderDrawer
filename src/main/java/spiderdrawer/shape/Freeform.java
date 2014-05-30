@@ -2,13 +2,14 @@ package spiderdrawer.shape;
 
 import java.awt.Graphics2D;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 
 import spiderdrawer.shape.interfaces.Deletable;
 import spiderdrawer.shape.interfaces.Drawable;
 import static spiderdrawer.Parameters.FREEFORM_OVERLAP_DIST;
+import static spiderdrawer.Parameters.MAX_DOT_HEIGHT;
+import static spiderdrawer.Parameters.MAX_DOT_WIDTH;
 
 public class Freeform implements Drawable, Deletable {
 
@@ -164,6 +165,15 @@ public class Freeform implements Drawable, Deletable {
 		return overlaps;
 	}
 	
+	public boolean intersects(Circle circle) {
+		for (int i = 0; i < points.size()-1; i++) {
+			Line line = new Line(points.get(i), points.get(i+1));
+			if (circle.intersects(line))
+				return true;
+		}
+		return false;
+	}
+	
     public Set<Freeform> overlappingFreeforms(ArrayList<Freeform> freeformList, Set<Freeform> currentFreeforms) {
     	Set<Freeform> intersectingFreeforms = new HashSet<Freeform>();
     	intersectingFreeforms.add(this);
@@ -187,6 +197,12 @@ public class Freeform implements Drawable, Deletable {
 	
 	public boolean isRemoved() {
 		return removed;
+	}
+	
+	public boolean isDotSize() {
+		if (maxX() - minX() > MAX_DOT_WIDTH || maxY() - minY() > MAX_DOT_HEIGHT)
+			return false;
+		return true;
 	}
 
 	@Override

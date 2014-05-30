@@ -2,6 +2,9 @@ package spiderdrawer.shape;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
+import java.awt.geom.Area;
+import java.awt.geom.Ellipse2D;
 import java.util.ArrayList;
 
 import spiderdrawer.exception.EmptyContainerException;
@@ -30,12 +33,13 @@ public class Box implements Drawable, Movable, Deletable {
 	boolean leftConnective;
 	MultiContainer<Connective, Box> innerConnectives;
 	MultiContainer<Box, Box> innerBoxes;
-	MultiContainer<Box, Box> outerBoxes;
+	SingleContainer<Box, Box> outerBox;
 	MultiContainer<Box, Box> overlapBoxes;
 	MultiContainer<Label, Box> labels;
 	MultiContainer<Point, Box> points;
 	ArrayList<Shape> toMove;
 	MultiContainer<Spider, Box> spiders;
+	SingleContainer<Shading, Box> shading;
 
 
 	public Box(Point topLeft, int width, int height) {
@@ -57,11 +61,12 @@ public class Box implements Drawable, Movable, Deletable {
 		connective = new SingleContainer<Connective, Box>(this);
 		innerConnectives = new MultiContainer<Connective, Box>(this);
 		innerBoxes = new MultiContainer<Box, Box>(this);
-		outerBoxes = new MultiContainer<Box, Box>(this);
+		outerBox = new SingleContainer<Box, Box>(this);
 		overlapBoxes = new MultiContainer<Box, Box>(this);
 		labels = new MultiContainer<Label, Box>(this);
 		points = new MultiContainer<Point, Box>(this);
 		spiders = new MultiContainer<Spider, Box>(this);
+		shading = new SingleContainer<Shading, Box>(this);
 	}
 	
 	public static Box create(int topLeftX, int topLeftY, int width, int height, ArrayList<Shape> shapeList) {
@@ -69,6 +74,7 @@ public class Box implements Drawable, Movable, Deletable {
 		box.createContainers();
 		box.shapeList = shapeList;
 		box.recompute(false);
+		box.computeShading();
 		return box;
 	}
 	
@@ -107,6 +113,10 @@ public class Box implements Drawable, Movable, Deletable {
 		if (intersects(p))
 			return 0;
 		return boundaryDistance(p);
+	}
+	
+	private int size() {
+		return width*height;
 	}
 	
 	public boolean intersects(Point p) {
@@ -180,87 +190,146 @@ public class Box implements Drawable, Movable, Deletable {
 		return result += "]";
 	}
 	
-	public String shadingsAsString() throws EmptyContainerException {
-		String result = "[";
+	public String shadedZones(boolean empty) throws EmptyContainerException {
+		String result = "";
 		ArrayList<Shading> seenShadings = new ArrayList<Shading>();
 		for (int i = 0; i < circles.size(); i++) {
 			Circle circle = circles.get(i);
 			for (int j = 0; j < circle.shadings.size(); j++) {
-				if (!seenShadings.contains(circle.shadings.get(j))) {
-					result += circle.shadings.get(j).asString();
+				if (!seenShadings.contains(circle.shadings.get(j)) && (!empty || !circle.shadings.get(j).containsSpider()) && doesOverlap(circle.shadings.get(j).included.list())) {
+					result += circle.shadings.get(j).asString() + ",";
 					seenShadings.add(circle.shadings.get(j));
 				}
 			}
+			if (shading.get() != null) {
+				result += shading.get().asString() + ",";
+			}
 		}
-		return result + "]";
+		if (result.length() > 1) {
+			result = result.substring(0, result.length()-1);
+		}
+		return result;
 	}
 	
-	public String zonesAsString() {
-		StringBuilder result = new StringBuilder();
-		result.append('[');
-		ArrayList<Circle> found = new ArrayList<Circle>();
-		ArrayList<Circle> done = new ArrayList<Circle>();
-		for (int i = 0; i < circles.size(); i++) {
-			found.add(circles.get(i));
-			circleOverlaps(result, found, done);
-			found.clear();
-			done.add(circles.get(i));
+	public String visibleEmptyZones() throws EmptyContainerException {
+		StringBuilder result = new StringBuilder(shadedZones(true));
+		if (result.length() == 0 && circles.size() > 0) {
+			ArrayList<Circle> temp = new ArrayList<Circle>();
+			temp.add(circles.get(0));
+			if (!checkZone(true, temp)) {
+				addZones(result, temp);
+				result.delete(result.length()-2, result.length());
+			}
 		}
+		return "[" + result + "]";
+	}
+	
+	public String shadedZones() throws EmptyContainerException {
+		return "[" + shadedZones(false) + "]";
+	}
+	
+	public String shadedAndMissingZones() throws EmptyContainerException {
+		String result = "[";
+		result += shadedZones(false);
+		String missing = missingZones();
+		if (result.length() > 1 && missing.length() > 0)
+			result += ",";
+		return result + missing + "]";
+	}	
+	
+	public String missingZones() {
+		StringBuilder result = new StringBuilder();
+		checkZones(true, result, new ArrayList<Circle>(), 0);
 		if (result.length() > 1)
 			result.delete(result.length()-2, result.length());
-		result.append(']');
 		return result.toString();
 	}
 	
-	public void circleOverlaps(StringBuilder result, ArrayList<Circle> found, ArrayList<Circle> done) {
-		if (found.size() == 0)
-			return;
-		Circle circle = found.get(0);
-		ArrayList<Circle> added = new ArrayList<Circle>();
-		boolean overlapsAll = true;
-		for (int i = 0; i < circle.overlapCircles.size(); i++) {
-			overlapsAll = false;
-			Circle newCircle = circle.overlapCircles.get(i);
-			if (found.contains(newCircle) || done.contains(newCircle)) {
-				continue;
-			}
-			overlapsAll = true;
-			for (int j = 1; j < found.size(); j++) {
-				if (!found.get(j).overlapCircles.contains(newCircle))
-					overlapsAll = false;
-			}
-			if (overlapsAll) {
-				found.add(newCircle);
-				circleOverlaps(result, found, done);
-				found.remove(newCircle);
-				done.add(newCircle);
-				added.add(newCircle);
-			}
-		}
-		
-		if (!overlapsAll) {
-			if (found.size() > 1) {
-				result.append("([");
-				for (int i = 0; i < found.size(); i++) {
-					result.append("\"" + found.get(i).label.get().letter + "\"");
-					if (i != found.size()-1)
-						result.append(", ");
-				}
-				result.append("],[]), ");
-			}
-		}
-		done.removeAll(added);
+	public String presentZones() {
+		StringBuilder result = new StringBuilder();
+		checkZones(false, result, new ArrayList<Circle>(), 0);
+		if (result.length() > 1)
+			result.delete(result.length()-2, result.length());
+		return "[" + result.toString() +  "]";
 	}
 	
-	public String asString() throws EmptyContainerException, InvalidShapeException {
+	public void addZones(StringBuilder result, ArrayList<Circle> included) {
+		@SuppressWarnings("unchecked")
+		ArrayList<Circle> excluded = (ArrayList<Circle>) circles.list().clone();
+		excluded.removeAll(included);
+		StringBuilder temp = new StringBuilder();
+		
+		temp.append("([");
+		printList(temp, included);
+		temp.append("],[");
+		printList(temp, excluded);
+		temp.append("]), ");
+		System.out.println(temp);
+		result.append(temp);
+	}
+	
+	public void printList(StringBuilder result, ArrayList<Circle> list) {
+		for (int i = 0; i < list.size(); i++) {
+			result.append("\"" + list.get(i).label.get().letter + "\"");
+			if (i < list.size()-1)
+				result.append(",");
+		}
+	}
+	
+	public void checkZones(boolean missing, StringBuilder result, ArrayList<Circle> found, int done) {
+		for (int i = done; i < circles.size(); i++) {
+			found.add(circles.get(i));
+			checkZones(missing, result, found, i+1);
+			found.remove(circles.get(i));
+		}
+		if (checkZone(missing, found))
+			addZones(result, found);
+	}	
+	
+	public boolean checkZone(boolean missing, ArrayList<Circle> included) {
+		if (included.size() == 0)
+			return false;
+		Box box = included.get(0).boxes.get(0);
+		Area area = new Area(new Rectangle(box.topLeft.x, box.topLeft.y, box.width, box.height));
+		for (int i = 0; i < included.size(); i++) {
+			Circle circle = included.get(i);
+			area.intersect(new Area(new Ellipse2D.Float(circle.center.x-circle.radius, circle.center.y-circle.radius, circle.radius*2, circle.radius*2)));
+		}
+		@SuppressWarnings("unchecked")
+		ArrayList<Circle> excluded = (ArrayList<Circle>) box.circles.list().clone();
+		excluded.removeAll(included);
+		if (excluded != null) {
+			for (int i = 0; i < excluded.size(); i++) {
+				Circle circle = excluded.get(i);
+				area.subtract(new Area(new Ellipse2D.Float(circle.center.x-circle.radius, circle.center.y-circle.radius, circle.radius*2, circle.radius*2)));
+			}
+		}
+		if (missing)
+			return area.isEmpty();
+		else
+			return !area.isEmpty();
+	}
+	
+	public boolean doesOverlap(ArrayList<Circle> list) {
+		for (int i = 0; i < list.size()-1; i++) {
+			Circle current = list.get(i);
+			for (int j = i + 1; j < list.size(); j++) {
+				if (!current.overlapCircles.contains(list.get(j)))
+					return false;
+			}
+		}
+		return true;
+	}
+	
+	public String asString(boolean originalRep) throws EmptyContainerException, InvalidShapeException {
 	    	if (isValid()) {
 	    		if (singleInnerConnective()) {
 	    			Connective connective = getInnerConnective();
 	    			String args;
 	    			if (connective.asString() == "not") {
-	    				args = "arg1 = " + connective.getRightBox().asString() + " "; 
+	    				args = "arg1 = " + connective.getRightBox().asString(originalRep) + " "; 
 	    			} else {
-	    				args = "arg1 = " + connective.getLeftBox().asString() + ", arg2 = " + connective.getRightBox().asString() + " ";
+	    				args = "arg1 = " + connective.getLeftBox().asString(originalRep) + ", arg2 = " + connective.getRightBox().asString(originalRep) + " ";
 	    			}
 	    			return "BinarySD { "
 	    					+ "operator= \"op " + connective.asString() + "\", "
@@ -270,8 +339,8 @@ public class Box implements Drawable, Movable, Deletable {
 	    			return "PrimarySD { "
 	    					+ "spiders = " + spidersAsString() + ", "
 	    					+ "habitats = " +  habitatsAsString() + ", "
-	    					+ "sh_zones = " + shadingsAsString() + " "
-	    					//+ "present_zones = " + zonesAsString() + " "
+	    					+ "sh_zones = " +  (originalRep? shadedZones() : shadedAndMissingZones()) + ", "
+	    					+ "present_zones = " + (originalRep? presentZones() : visibleEmptyZones()) + " "
 	    					+ "}";
 	    		}
 	    	} else {
@@ -367,17 +436,32 @@ public class Box implements Drawable, Movable, Deletable {
 		}
 	}
 		
-	private void computeBoxes(Box[] boxes) {
+	private void computeInnerBoxes(Box[] boxes) {
 		innerBoxes.removeAll();
-		outerBoxes.removeAll();
 		for (int i = 0; i < boxes.length; i++) {
-			if (this.contains(boxes[i]) && !innerBoxesContains(boxes[i])) {
-				innerBoxes.add(boxes[i], boxes[i].outerBoxes);
-			}
-			if (boxes[i].contains(this)) {
-				outerBoxes.add(boxes[i], boxes[i].innerBoxes);
+			if (this.contains(boxes[i]) && (boxes[i].outerBox.get() == null || boxes[i].outerBox.get().size() < size())) {
+				innerBoxes.add(boxes[i], boxes[i].outerBox);
 			}
 		}
+		
+	}
+	
+	private void computeOuterBox(Box[] boxes) {
+		int smallestBox = -1;
+		int minBoxSize = Integer.MAX_VALUE;
+		ArrayList<Box> outerBoxes = new ArrayList<Box>();
+		for (int i = 0; i < boxes.length; i++) {
+			if (boxes[i].contains(this) && boxes[i].overlapBoxes.size() == 0) {
+				outerBoxes.add(boxes[i]);
+				if (boxes[i].size() < minBoxSize) {
+					smallestBox = outerBoxes.size()-1;
+					minBoxSize = boxes[i].size();
+				}
+			}
+		}
+		
+		if (smallestBox != -1)
+			outerBox.set(outerBoxes.get(smallestBox), outerBoxes.get(smallestBox).innerBoxes);
 	}
 	
 	private void computeOverlapBoxes(Box[] boxes) {
@@ -401,16 +485,17 @@ public class Box implements Drawable, Movable, Deletable {
 		for (int i = 0; i < circles.length; i++) {
 			if (this.contains(circles[i]) && !this.innerBoxesContains(circles[i])) {
 				this.circles.add(circles[i], circles[i].boxes);
-				removeOuterBoxes(circles[i]);
+				if (outerBox.get() != null)
+					outerBox.get().circles.remove(circles[i]);
 			}
 		}
 	}
 	
-	private void removeOuterBoxes(Circle circle) {
+	/*private void removeOuterBoxes(Circle circle) {
 		for (int i = 0; i < outerBoxes.size(); i++) {
 			outerBoxes.get(i).circles.remove(circle);
 		}
-	}
+	}*/
 	
 	private void computeOverlapCircles(Circle[] circles) {
 		overlapCircles.removeAll();
@@ -434,7 +519,7 @@ public class Box implements Drawable, Movable, Deletable {
 	}
 	
 	/*
-	 * Relies on computeBoxes() (outerBoxes computed) being called beforehand.
+	 * Relies on computeBoxes() (outerBox computed) being called beforehand.
 	 */
 	private void computePoints(Point[] points) {
 		this.points.removeAll();
@@ -443,8 +528,7 @@ public class Box implements Drawable, Movable, Deletable {
 		}
 		for (int i = 0; i < points.length; i++) {
 			if (this.contains(points[i])) {
-				for (int j = 0; j < outerBoxes.size(); j++)
-					points[i].boxes.remove(outerBoxes.get(j));
+				points[i].boxes.remove(outerBox.get());
 				this.points.add(points[i], points[i].boxes);
 			}
 		}
@@ -545,12 +629,19 @@ public class Box implements Drawable, Movable, Deletable {
 		}
 	}
 	
+	private void computeShading() {
+		if (shading.get() == null && outerBox.get() != null && outerBox.get().shading.get() != null) {
+			shading.set(outerBox.get().shading.get(), outerBox.get().shading.get().box);
+		}
+	}
+	
 	@Override
 	public void recompute(boolean moving) {
 		if (shapeList == null)
 			return;
 		if (!moving) {
-			computeBoxes(Arrays.boxArray(shapeList));
+			computeInnerBoxes(Arrays.boxArray(shapeList));
+			computeOuterBox(Arrays.boxArray(shapeList));
 			computeCircles(Arrays.circleArray(shapeList));
 			for (int i = 0; i < this.circles.size(); i++) {
 				this.circles.get(i).computeLabels(Arrays.labelArray(shapeList));
@@ -568,15 +659,13 @@ public class Box implements Drawable, Movable, Deletable {
 		computeOverlapLines(Arrays.lineArray(shapeList));
 		computeOverlapBoxes(Arrays.boxArray(shapeList));
 		computeSpiders();	
-		for (int i = 0; i < outerBoxes.size(); i++) {
-			Box outerBox = outerBoxes.get(i);
-			for (int j = 0; j < outerBox.spiders.size(); j++) {
-				int size = outerBox.spiders.size();
-				outerBox.spiders.get(j).computeBox();
-				if (outerBox.spiders.size() < size)
+		if (outerBox.get() != null)
+			for (int j = 0; j < outerBox.get().spiders.size(); j++) {
+				int size = outerBox.get().spiders.size();
+				outerBox.get().spiders.get(j).computeBox();
+				if (outerBox.get().spiders.size() < size)
 					j--;
 			}
-		}
 		computeSpiderLabels();
 	}
 	
@@ -650,6 +739,14 @@ public class Box implements Drawable, Movable, Deletable {
 		boolean withinXDir = (topLeft.x < point.x) && (point.x < topLeft.x + width);
 		boolean withinYDir = (topLeft.y < point.y) && (point.y < topLeft.y + height);
 		return withinXDir && withinYDir;
+	}
+	
+	protected boolean contains(Freeform freeform) {
+		for (int i = 0; i < freeform.points.size(); i++) {
+			if (!contains(freeform.points.get(i)))
+				return false;
+		}
+		return true;
 	}
 	
 	protected boolean contains(Line line) {
@@ -735,7 +832,6 @@ public class Box implements Drawable, Movable, Deletable {
 	}
 	
 	protected double leftDistance(Freeform freeform) {
-		int minX = freeform.minX();
     	int minY = freeform.minY();
     	int maxX = freeform.maxX();
     	int maxY = freeform.maxY();
@@ -751,7 +847,6 @@ public class Box implements Drawable, Movable, Deletable {
 	protected double rightDistance(Freeform freeform) {
 		int minX = freeform.minX();
     	int minY = freeform.minY();
-    	int maxX = freeform.maxX();
     	int maxY = freeform.maxY();
 		Point topRight = new Point(topLeft.x + width, topLeft.y);
 		Point bottomRight = new Point(topLeft.x + width, topLeft.y + height);
@@ -793,14 +888,9 @@ public class Box implements Drawable, Movable, Deletable {
 			labels.get(i).recompute(false);
 		labels.removeAll();
 		points.removeAll();
-		Box outerBox = null;
-		for (int i = 0; i < outerBoxes.size(); i++) {
-			if (outerBoxes.get(i).innerBoxes.size() == 1)
-				outerBox = outerBoxes.get(i);
-		}
-		outerBoxes.removeAll();	
-		if (outerBox != null)
-			outerBox.recompute(false);
+		if (outerBox.get() != null)
+			outerBox.get().recompute(false);
+		outerBox.set(null, null);	
 		for (int i = innerConnectives.size()-1; i >= 0; i--)
 			innerConnectives.get(i).recompute(false);
 		innerConnectives.removeAll();
@@ -815,5 +905,7 @@ public class Box implements Drawable, Movable, Deletable {
 		}
 		
 		spiders.removeAll();
+		shapeList.remove(shading.get());
+		shading.set(null, null);
 	}
 }

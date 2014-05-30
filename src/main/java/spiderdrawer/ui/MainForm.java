@@ -1,45 +1,26 @@
 package spiderdrawer.ui;
 
-import javax.imageio.ImageIO;
-import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.Box.Filler;
-import javax.swing.JButton;
-import javax.swing.JDialog;
-import javax.swing.JFileChooser;
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
-import javax.swing.JMenuItem;
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
-import javax.swing.Timer;
-import javax.swing.border.Border;
-import javax.swing.event.MenuEvent;
-import javax.swing.event.MenuListener;
-
-import net.sourceforge.tess4j.Tesseract;
-import net.sourceforge.tess4j.TesseractException;
-import net.sourceforge.tess4j.TessAPI.TessPageSegMode;
-
-import java.awt.Color;
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FileDialog;
+import java.awt.GraphicsEnvironment;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
-import java.io.Writer;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+
+import javax.imageio.ImageIO;
+import javax.swing.JDialog;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 
 /**
  *
@@ -48,16 +29,17 @@ import java.nio.file.Paths;
 public class MainForm extends JDialog {
 	
 	private DrawingPanel drawingPanel;
-    private MessageBox messageBox = null;
     final JMenuItem undoMenuItem = new JMenuItem();
     final JMenuItem redoMenuItem = new JMenuItem();
-    
+    boolean done = false;
+    boolean originalRep;
 	
     /**
      * Creates new form MainForm
      */
-    public MainForm(java.awt.Frame parent, boolean modal) {
+    public MainForm(java.awt.Frame parent, boolean modal, boolean originalRep) {
     	super(parent, modal);
+    	this.originalRep = originalRep;
         initComponents();
     }
     
@@ -67,14 +49,15 @@ public class MainForm extends JDialog {
     }
     
     private void convertMenuItemClicked() {
-    	String textRep = drawingPanel.textualRep();
-    	System.out.println(textRep);
-    	if (isModal() && textRep != null)
+    	String textRep = getSpiderDiagram();
+    	if (isModal() && textRep != null) {
+    		done = true;
     		setVisible(false);
+    	}
     }
     
     public String getSpiderDiagram() {
-    	String textRep = drawingPanel.textualRep();
+    	String textRep = drawingPanel.textualRep(originalRep);
     	System.out.println(textRep);
     	return textRep;
     }
@@ -154,7 +137,8 @@ public class MainForm extends JDialog {
     }
     
     private void initComponents() {
-        setSize(900, 650);
+        //setSize(900, 650);
+        setBounds(GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds()); 
         setLocationRelativeTo(null);
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
 
@@ -316,11 +300,21 @@ public class MainForm extends JDialog {
 		redoMenuItem.setEnabled(drawingPanel.canRedo());
     }
     
+    public boolean showDialog() {
+    	done = false;
+    	setVisible(true);
+    	return done;
+    }	
+    
     /**
      * @param args the command line arguments
      */
     public static void main(String args[]) {
-        new MainForm(null, false).setVisible(true);
+    	boolean originalRep = false;
+    	if (args.length > 0)
+    		originalRep = true;
+    	System.out.println("Using original rep: " + originalRep);
+        new MainForm(null, false, originalRep).setVisible(true);
     }
 
 

@@ -12,8 +12,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 
-import javax.swing.JDialog;
-import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
@@ -38,8 +36,7 @@ import spiderdrawer.shape.interfaces.Deletable;
 import spiderdrawer.shape.interfaces.Drawable;
 import spiderdrawer.shape.interfaces.Movable;
 import spiderdrawer.shape.interfaces.Shape;
-import static spiderdrawer.Parameters.LETTER_RECOGNITION_WAIT;
-import static spiderdrawer.Parameters.MAX_LETTER_I_LEN;
+import static spiderdrawer.Parameters.RECOGNITION_SLEEP;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
@@ -92,7 +89,6 @@ public class DrawingPanel extends JPanel {
         addMouseListener(new MouseAdapter() {
             public void mousePressed(MouseEvent e) {
             	currentAction = new Action(shapeList);
-            	System.out.println("currentAction being created: " + currentAction);
 	        	from = new Point(e.getX(), e.getY());
 	        	originalFrom = from;
 	        	deleted = false;
@@ -139,7 +135,6 @@ public class DrawingPanel extends JPanel {
 	            				shapeList.remove(i);
 	            				delShape.remove();
 	            				currentAction.add(delShape);
-	            				System.out.println("Released: deleted " + delShape);
 	            			}
             			}
             		}
@@ -171,36 +166,57 @@ public class DrawingPanel extends JPanel {
 		        	Thread timeThread = new Thread() {
 		                public void run() {
 		            		Freeform initial = currentFreeform;
-		                    try {
-		                        Thread.sleep(LETTER_RECOGNITION_WAIT);
-		                    } catch (InterruptedException e) {
-		                        e.printStackTrace();
-		                    }
-		                    if (initial.isRemoved())
-		                    	return;
 		                    Shape shape = null;
-		                    ArrayList<Freeform> overlapFreeforms = initial.getOverlappingFreeforms(Arrays.freeformList(shapeList));
-	                    	overlapFreeforms.add(initial);
-		                    boolean textSize = SpiderRecognizer.isTextSize(overlapFreeforms.toArray(new Freeform[0])) || SpiderRecognizer.isConnectiveSize(overlapFreeforms.toArray(new Freeform[0]));
-		                    System.out.println(initial + ": textSize:" + textSize + " num " + overlapFreeforms.size() + " isLast" + initial.isLast(overlapFreeforms.toArray(new Freeform[0])));
-		                    if (initial != null && (initial.equals(currentFreeform) || !textSize || initial.isLast(overlapFreeforms.toArray(new Freeform[0])))) {
-		                    	if (overlapFreeforms.size() != 1 && textSize) {
-		                    		shape = checkText(initial, true, true);
-		                    	} else {
-			                    	String resultingClass = rataRecognizer.classify(initial);
-			                    	System.out.println("Result:" + resultingClass);
-			                    	shapeList.remove(initial);
-			                    	switch(resultingClass) {
-			                    		case "Text": shape = checkText(initial, false, true); break;
-			                    		case "Box": shape = Box.create(initial, shapeList); break;
-			                    		case "Line":  shape = SpiderRecognizer.checkLine(initial, shapeList); break;
-			                    		case "Circle": shape = Circle.create(initial, shapeList); break;
-			                    		case "Dot": shape = Point.create(initial, shapeList); break;
-			                    		case "Shading": shape = Shading.create(initial, shapeList); break;
-			                    		case "Connective": shape = checkText(initial, true, false); break;
-			                    	}
+		                    
+		            		Freeform[] arrFreeform = {initial};
+		            		if (initial.getOverlappingFreeforms(Arrays.freeformList(shapeList)).size() == 0 && !SpiderRecognizer.isTextSize(arrFreeform)) {
+			            		String resultingClass = rataRecognizer.classify(initial);
+		                    	System.out.println("Result:" + resultingClass);
+		                    	switch(resultingClass) {
+		                    		case "Text": shape = null; break;
+		                    		case "Box": shape = Box.create(initial, shapeList); break;
+		                    		case "Line":  shape = SpiderRecognizer.checkLine(initial, shapeList); break;
+		                    		case "Circle": shape = Circle.create(initial, shapeList); break;
+		                    		case "Dot": shape = Point.create(initial, shapeList); break;
+		                    		case "Shading": shape = Shading.create(initial, shapeList); break;
+		                    		case "Connective": shape = null; break;
 		                    	}
-		                    }
+		                    	if (shape != null)
+			                    	shapeList.remove(initial);
+
+		            		}
+		            		if (shape == null) {
+			                    try {
+			                        Thread.sleep(RECOGNITION_SLEEP);
+			                    } catch (InterruptedException e) {
+			                        e.printStackTrace();
+			                    }
+			                    if (initial.isRemoved())
+			                    	return;
+			                    ArrayList<Freeform> overlapFreeforms = initial.getOverlappingFreeforms(Arrays.freeformList(shapeList));
+		                    	overlapFreeforms.add(initial);
+			                    boolean textSize = SpiderRecognizer.isTextSize(overlapFreeforms.toArray(new Freeform[0]));
+			                    System.out.println(initial + ": textSize:" + textSize + " num " + overlapFreeforms.size() + " isLast" + initial.isLast(overlapFreeforms.toArray(new Freeform[0])));
+			                    if (initial != null && (initial.equals(currentFreeform) || !textSize || initial.isLast(overlapFreeforms.toArray(new Freeform[0])))) {
+			                    	if (overlapFreeforms.size() != 1 && !SpiderRecognizer.isAnyDotSize(overlapFreeforms.toArray(new Freeform[0]))) {
+			                    		shape = checkText(initial, true, true);
+			                    	} else {
+				                    	String resultingClass = rataRecognizer.classify(initial);
+				                    	System.out.println("Result:" + resultingClass);
+				                    	switch(resultingClass) {
+				                    		case "Text": shape = checkText(initial, false, true); break;
+				                    		case "Box": shape = Box.create(initial, shapeList); break;
+				                    		case "Line":  shape = SpiderRecognizer.checkLine(initial, shapeList); break;
+				                    		case "Circle": shape = Circle.create(initial, shapeList); break;
+				                    		case "Dot": shape = Point.create(initial, shapeList); break;
+				                    		case "Shading": shape = Shading.create(initial, shapeList); break;
+				                    		case "Connective": shape = checkText(initial, true, false); break;
+				                    	}
+				                    	if ((shape != null && !resultingClass.equals("Text")) || resultingClass.equals("Shading"))
+				                    		shapeList.remove(initial);
+			                    	}
+			                    }
+		            		}
 		                    if (shape != null) {
 		                    	if (!initial.isRemoved())
 		                    		 shapeList.add(shape);
@@ -483,9 +499,9 @@ public class DrawingPanel extends JPanel {
         }
     }
     
-    public String textualRep() {
+    public String textualRep(boolean originalRep) {
     	try {
-    		return drawingBox.asString();
+    		return drawingBox.asString(originalRep);
     	} catch (EmptyContainerException | InvalidShapeException e) {
     		System.out.println(e.getMessage());
     		return null;

@@ -4,18 +4,22 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.Rectangle;
 
+import com.sun.jna.Native;
+
 import spiderdrawer.shape.Freeform;
-import net.sourceforge.tess4j.Tesseract1;
+import net.sourceforge.tess4j.TessAPI;
+import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
 import net.sourceforge.tess4j.TessAPI.TessPageSegMode;
 
 public class TessRecognizer {
 
-	private Tesseract1 instance;
+	private Tesseract instance;
 	
 	
 	public TessRecognizer() {
-		instance = new Tesseract1();
+		
+		instance = Tesseract.getInstance();
     	instance.setDatapath(".");
     	instance.setPageSegMode(TessPageSegMode.PSM_SINGLE_CHAR);
 	}
@@ -54,16 +58,18 @@ public class TessRecognizer {
     	synchronized(this) {
 	    	if (connective && letter) {
 	    		instance.setTessVariable("tessedit_char_whitelist", "ABCDEFGHIJKLMNOPQRSTUVWXYZ↔→∨∧¬");
-	    		instance.setLanguage("eng+con");
+	    		instance.setLanguage("eng+conn");
 	    	} else if (connective) {
 	    		instance.setTessVariable("tessedit_char_whitelist", "↔→∨∧¬");
-	    		instance.setLanguage("con");
+	    		instance.setLanguage("conn");
 	    	} else { //letter == true
 	    		instance.setTessVariable("tessedit_char_whitelist", "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
 	    		instance.setLanguage("eng");
 	    	}
 	    	try {
-	           String result = instance.doOCR(createImage(freeforms, (int) rect.getWidth(), (int) rect.getHeight()));
+	    		System.out.println("about to do OCR");
+	    		String result = instance.doOCR(createImage(freeforms, (int) rect.getWidth(), (int) rect.getHeight()));
+	    		System.out.println("finished OCR");
 	            if (result.length() > 0) {
 	            	char character = '\0';
 	            	for(int i = 0; i < result.length(); i++) {
